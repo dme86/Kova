@@ -13,12 +13,27 @@ test "$(cat /etc/hostname)" = "kova"
 test "$ID" = "kova"
 test "$ID_LIKE" = "arch"
 test "$PRETTY_NAME" = "Kova Linux"
+# Verify that ordinary command lookup selects the Rust replacements, while
+# the package-owned GNU implementations are left available in /usr/bin.
+for cmd in grep find xargs; do
+  test -x "/usr/local/bin/$cmd"
+  test "$(command -v "$cmd")" = "/usr/local/bin/$cmd"
+done
+tmp=$(mktemp -d)
+printf 'rust is the default\n' > "$tmp/check.txt"
+grep -q 'rust is the default' "$tmp/check.txt"
+test "$(find "$tmp" -type f -name check.txt)" = "$tmp/check.txt"
+printf '%s\n' "$tmp/check.txt" | xargs grep -q 'rust is the default'
+rm -rf "$tmp"
+
 test "$(getent passwd kova | cut -d: -f7)" = "/usr/bin/fish"
 test -f /home/kova/.config/nvim/init.lua
 test -f /home/kova/.config/nvim/lazy-lock.json
 id -nG kova | tr ' ' '\n' | grep -qx wheel
+systemctl is-active --quiet kova-live-user.service
+systemctl cat getty@tty1.service | grep -q -- '--autologin kova'
 
-for cmd in fish nvim rg fd eza btm pacman git; do
+for cmd in fish nvim rg fd eza btm dust procs dysk sd pacman git; do
   command -v "$cmd" >/dev/null
 done
 
@@ -26,7 +41,7 @@ done
 runuser -u kova -- fish -c 'type -q tide'
 # Verify interactive Fish defaults and exercise the Rust-backed file tools.
 runuser -u kova -- env TERM=dumb fish -ic '
-  functions -q ls ll la cat cp mv rm mkdir touch sort wc; or exit 1
+  functions -q ls ll la cat cp mv rm mkdir touch sort wc du ps df; or exit 1
   set -l tmp (command mktemp -d)
   or exit 1
   echo kova > $tmp/original

@@ -13,7 +13,7 @@ Kova is a minimal, Arch-based Linux live environment with a Rust-friendly comman
 - **Arch Linux** — rolling-release packages, `pacman`, systemd, and the standard Archiso boot environment
 - **Fish + Tide** — Fish as the interactive shell, with Tide v6 included in the image
 - **Neovim** — default editor, configured from [dme86/neovim](https://github.com/dme86/neovim)
-- **Rust CLI tools** — `eza`, `bat`, `fd`, `ripgrep`, `bottom`, `uutils-coreutils`, and `zoxide`
+- **Rust CLI tools** — `eza`, `bat`, `fd`, `ripgrep`, `bottom`, `dust`, `procs`, `dysk`, `sd`, `uutils-coreutils`, and `zoxide`
 - **Development tools** — `git`, `fzf`, `lazygit`, `tmux`, `npm`, `go`, `tree-sitter-cli`, `unzip`, and build tools
 - **Networking** — NetworkManager, inherited from Archiso
 
@@ -21,9 +21,9 @@ Kova is a minimal, Arch-based Linux live environment with a Rust-friendly comman
 
 The live system identifies as Kova Linux via `/etc/os-release` (`ID=kova`, `ID_LIKE=arch`) and uses Kova-branded BIOS/UEFI boot entries and login text. The upstream Arch kernel, packaging, and repository provenance are retained.
 
-Interactive Fish sessions prefer `eza` for `ls`, `bat` for `cat`, and the uutils implementations of `cp`, `mv`, `rm`, `mkdir`, `touch`, `sort`, and `wc`. These are Fish aliases, not replacements for executables in `/usr/bin`. System services and non-interactive scripts retain the original commands to preserve compatibility.
+Interactive Fish sessions prefer `eza` for `ls`, `bat` for `cat`, `dust` for `du`, `procs` for `ps`, `dysk` for `df`, and uutils implementations of `cp`, `mv`, `rm`, `mkdir`, `touch`, `sort`, and `wc`. The `dust`, `procs` and `dysk` aliases deliberately use modern syntax rather than emulating all GNU/procps flags. These are Fish aliases, not replacements for executables in `/usr/bin`. System services and non-interactive scripts retain the original commands to preserve compatibility.
 
-`rg` and `fd` deliberately keep their own command names: their options and behavior are not interchangeable with `grep` and `find`.
+`grep`, `find`, and `xargs` are Rust binaries from pinned uutils releases, placed in `/usr/local/bin` and checked by SHA256 before inclusion. They are the **default commands across shells**, not merely Fish aliases. Pacman-owned GNU counterparts remain under `/usr/bin` for compatibility while we work toward Rust replacement packages. `rg` and `fd` remain available under their own names for their modern search behavior.
 
 ## Live environment
 
@@ -45,9 +45,9 @@ By default, the build tracks the `main` branch. `KOVA_NVIM_REF` selects a differ
 
 Kova ISOs are assembled with `mkarchiso` from the official Archiso `releng` profile and the additions in `config/airootfs/`. The original Arch ISO is not used as a build input.
 
-The GitHub Actions workflow builds on pushes to `main`, on version tags matching `v*`, or when dispatched manually. Successful builds produce a `kova-iso` artifact containing the ISO and `SHA256SUMS`. Version tags also create a GitHub Release.
+GitHub Actions runs independent **checks**, **build**, and **boot** jobs. The build job uploads a `kova-iso` handoff artifact; that upload alone does not certify the ISO as bootable. The boot job downloads it, re-verifies SHA256, then boots Kova in QEMU and performs live-system checks. On `v*` tags, a final release job runs only after boot verification succeeds. Failed boot tests retain serial console logs.
 
-The CI pipeline checks shell syntax, verifies the ISO checksum, then boots the ISO under QEMU and validates its live user, Fish/Tide, Neovim binary, and CLI tools. ISO publication only occurs after the boot test passes. The `kova-qemu-logs` artifact preserves serial-console output and QEMU diagnostics for debugging failures. GitHub-hosted nested virtualization is experimental; the QEMU runner falls back to TCG if KVM is unavailable.
+The CI pipeline checks shell syntax, verifies the ISO checksum, then boots the ISO under QEMU and validates its live user, Fish/Tide, Neovim binary, and CLI tools. GitHub Release publication only occurs after the boot test passes. The `kova-qemu-logs` artifact preserves serial-console output and QEMU diagnostics for debugging failures. GitHub-hosted nested virtualization is experimental; the QEMU runner falls back to TCG if KVM is unavailable.
 
 ### Local build
 
@@ -57,6 +57,7 @@ An Arch Linux host with root access is required:
 sudo pacman -Syu --needed archiso curl git
 sudo bash scripts/install-tide.sh config/airootfs
 sudo bash scripts/install-neovim-config.sh
+sudo bash scripts/install-rust-search.sh config/airootfs
 sudo bash scripts/build.sh
 ```
 
@@ -79,7 +80,13 @@ For automated serial-console testing with QEMU installed:
 bash scripts/test-iso.sh
 ```
 
-The smoke-test service starts only in a virtual machine with `/dev/ttyS0`. It reports `KOVA_CI_PASS` or `KOVA_CI_FAIL` over the serial port. CI currently covers BIOS boot; UEFI, the graphical environment and a persistent installation require separate tests.
+The smoke-test service starts only in a virtual machine with `/dev/ttyS0`. It verifies the live-user systemd service and the tty1 autologin configuration, and runs commands as the `kova` user via `runuser`. This does **not** simulate an interactive console login or an SSH connection. It reports `KOVA_CI_PASS` or `KOVA_CI_FAIL` over the serial port. CI currently covers BIOS boot; UEFI, the graphical environment and a persistent installation require separate tests.
+
+## Installer roadmap
+
+Kova's planned opinionated installer uses GPT, a 1 GiB FAT32 ESP, and a Btrfs root filesystem with ZSTD compression. The `@`, `@home`, `@snapshots`, and `@var_log` subvolumes separate OS state, home data, snapshot history, and logs. Snapper and `snap-pac` provide snapshots and snapshots around pacman operations. See [the installer architecture](docs/installer.md) for the layout, initialization sequence and limitations.
+
+**No destructive installer is shipped yet.** Partitioning and rollback need virtual-disk integration tests before users can install Kova on real disks.
 
 ## Upstream
 

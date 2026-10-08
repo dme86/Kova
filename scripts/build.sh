@@ -21,6 +21,10 @@ bat
 fd
 ripgrep
 bottom
+dust
+procs
+dysk
+sd
 uutils-coreutils
 zoxide
 starship
@@ -55,6 +59,10 @@ grep -q 'console=ttyS0,115200n8' "$SYSLINUX_CFG"
 cat >> "$PROFILE/profiledef.sh" <<'KOVA_PERMISSIONS'
 file_permissions["/usr/local/lib/kova/setup-live-user"]="0:0:755"
 file_permissions["/usr/local/lib/kova/ci-smoke"]="0:0:755"
+# The three default Rust search commands are installed into /usr/local/bin.
+file_permissions["/usr/local/bin/grep"]="0:0:755"
+file_permissions["/usr/local/bin/find"]="0:0:755"
+file_permissions["/usr/local/bin/xargs"]="0:0:755"
 KOVA_PERMISSIONS
 
 # ISO name/branding; keep upstream bootstrap and bootloader configurations unchanged.

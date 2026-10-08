@@ -32,4 +32,15 @@ if status is-interactive
     if type -q uu-wc
         alias wc uu-wc
     end
+
+    # Modern Rust UIs; use dust/procs/dysk syntax rather than GNU options.
+    if type -q dust
+        alias du dust
+    end
+    if type -q procs
+        alias ps procs
+    end
+    if type -q dysk
+        alias df dysk
+    end
 end
