@@ -76,8 +76,8 @@ pacstrap -K "$target" \
   base linux linux-firmware mkinitcpio btrfs-progs snapper snap-pac \
   sudo fish git curl jq rate-mirrors neovim networkmanager \
   eza bat fd ripgrep bottom dust procs dysk sd uutils-coreutils \
-  zoxide fzf tmux starship feh wayland mesa libinput seatd \
-  greetd greetd-tuigreet swaybg foot xorg-xwayland wl-clipboard \
+  zoxide fzf tmux starship wayland mesa libinput seatd \
+  greetd greetd-tuigreet swaybg mako libnotify pipewire pipewire-alsa pipewire-pulse wireplumber brightnessctl foot xorg-xwayland wl-clipboard \
   zram-generator dosfstools efibootmgr
 # Snapper create-config requires .snapshots to be unmounted.
 arch-chroot "$target" snapper -c root create-config /
@@ -93,7 +93,7 @@ printf '%s\n' "$hostname" > "$target/etc/hostname"
 grep -Eq "^#?$locale[[:space:]]+UTF-8" "$target/etc/locale.gen" || { echo "Unknown locale" >&2; exit 1; }
 sed -i -E "s/^#($locale[[:space:]]+UTF-8)/\1/" "$target/etc/locale.gen"
 arch-chroot "$target" locale-gen
-for file in /usr/local/bin/kova /usr/local/bin/anvil /usr/local/bin/anvilctl /usr/local/bin/kova-session; do
+for file in /usr/local/bin/kova /usr/local/bin/anvil /usr/local/bin/anvilctl /usr/local/bin/kova-session /usr/local/bin/kova-osd; do
   install -Dm755 "$file" "$target$file"
 done
 for name in update-mirrors update-news update-anvil update-wallpapers set-wallpaper; do

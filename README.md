@@ -37,9 +37,41 @@ Kova's Cargo workspace contains two internal Rust crates and one `kova` executab
 
 The default session is [Anvil](https://github.com/dme86/anvil), launched after login with `greetd` and `tuigreet`. The ISO includes pinned, SHA256-verified Anvil v0.3.0 (an all-features release with layer-shell/XWayland); a weekly systemd timer downloads newer **GitHub Releases**, checks their SHA256 file and installs the new binary for the next login.
 
-The [wallpapers](https://github.com/dme86/.wallpapers) are shallow-cloned into the live image for offline first login and copied to installed machines. A daily systemd timer updates the root-owned repository. Anvil's default config under `/etc/skel` starts `swaybg` with one random image at each login; newly created users inherit the same config. `feh` is also installed, but as an X11 viewer it cannot set a Wayland wallpaper.
+The [wallpapers](https://github.com/dme86/.wallpapers) are shallow-cloned into the live image for offline first login and copied to installed machines. A daily systemd timer updates the root-owned repository. Anvil's default config under `/etc/skel` starts `swaybg` with one random image at each login; newly created users inherit the same config. Kova deliberately does not include `feh`: `swaybg` handles wallpapers natively on Wayland.
 
 Anvil DRM/KMS, the greetd session and the destructive installer are still experimental and need hardware and disposable-VM integration testing before a public release.
+
+## Kova notifications and media controls
+
+Kova uses **mako** (Wayland layer-shell) for notifications and **libnotify**
+for the standard `notify-send` command. It works as expected:
+
+```sh
+notify-send "Audio Muted"
+kova-osd volume up
+kova-osd volume down
+kova-osd volume mute
+kova-osd brightness up
+kova-osd brightness down
+```
+
+Audio uses PipeWire/WirePlumber (`wpctl`); hardware backlight changes use
+`brightnessctl`. The `kova-osd` helper displays a brief top-right
+notification with a progress indicator and replaces its previous popup when
+buttons are pressed repeatedly. The dark themed config lives in
+`/etc/skel/.config/mako/config` and is inherited by new accounts. Anvil
+starts mako automatically on login.
+
+**Hardware volume/brightness keybindings are not wired up yet.** Anvil
+v0.3.0 does not intercept the `XF86Audio*` / `XF86MonBrightness*` keys;
+the compositor itself needs native configurable media shortcuts. Until that
+Anvil release, the helper works manually or from another keybinding tool.
+See [the roadmap](docs/roadmap.md).
+
+**Planned:** Anvil releases should become an ordinary versioned, signed
+Pacman package so `pacman -Syu` can notify users and install updates,
+replacing the interim GitHub-release timer. See the roadmap for the durable
+repository and migration plan.
 
 ## Automatic pacman mirrors
 

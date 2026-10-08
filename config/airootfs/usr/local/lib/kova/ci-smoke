@@ -67,6 +67,11 @@ test -x /usr/local/bin/anvilctl
 test -x /usr/local/bin/kova-session
 test -f /etc/greetd/config.toml
 test -f /etc/skel/.config/anvil/config.toml
+test -f /etc/skel/.config/mako/config
+test -x /usr/local/bin/kova-osd
+/usr/local/bin/kova-osd --help | /usr/bin/grep -q 'kova-osd volume'
+/usr/bin/grep -q '"mako"' /etc/skel/.config/anvil/config.toml
+for cmd in mako notify-send wpctl brightnessctl; do command -v "$cmd" >/dev/null; done
 test -n "$(find /var/lib/kova/wallpapers/files -type f -name '*.png' -print -quit)"
 /usr/local/bin/kova news --summary >/dev/null
 log "KOVA_CI_STEP installer-preview passed"

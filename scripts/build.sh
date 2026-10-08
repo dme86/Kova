@@ -39,7 +39,13 @@ seatd
 greetd
 greetd-tuigreet
 swaybg
-feh
+mako
+libnotify
+pipewire
+pipewire-alsa
+pipewire-pulse
+wireplumber
+brightnessctl
 foot
 xorg-xwayland
 wl-clipboard
@@ -92,6 +98,7 @@ file_permissions["/usr/local/bin/kova"]="0:0:755"
 file_permissions["/usr/local/bin/anvil"]="0:0:755"
 file_permissions["/usr/local/bin/anvilctl"]="0:0:755"
 file_permissions["/usr/local/bin/kova-session"]="0:0:755"
+file_permissions["/usr/local/bin/kova-osd"]="0:0:755"
 file_permissions["/usr/local/lib/kova/install-system"]="0:0:755"
 file_permissions["/usr/local/lib/kova/update-news"]="0:0:755"
 file_permissions["/usr/local/lib/kova/update-anvil"]="0:0:755"

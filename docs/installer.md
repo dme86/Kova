@@ -163,8 +163,7 @@ support. This is not part of the initial release.
 
 The installed system ships greetd + tuigreet (TTY login) and executes
 `kova-session` to start Anvil on Wayland. Anvil v0.3.0 is pinned
-at ISO build time by SHA256. The Arch-compatible `feh` utility is
-included for image viewing, but `swaybg` drives backgrounds via
+at ISO build time by SHA256. `feh` is intentionally omitted; `swaybg` drives backgrounds via
 Anvil's layer-shell feature. Users inherit an Anvil startup config
 from `/etc/skel`; one wallpaper is randomly selected on every login.
 
@@ -180,3 +179,15 @@ installed packages, records acknowledged links in
 `~/.local/state/kova/news-read`, and provides an offline-only Fish
 login summary. Matching is conservative but heuristic, not a
 guarantee that all action-required announcements are detected.
+
+## Wayland notifications and media controls
+
+Anvil starts `mako` alongside the wallpaper client after login. The
+user inherits `~/.config/mako/config` via `/etc/skel`, defining a dark,
+blue-accented, top-right overlay. Standard `notify-send` comes from
+`libnotify`. PipeWire + WirePlumber provide `wpctl`; `brightnessctl`
+modifies supported hardware backlights. `kova-osd` changes each setting
+and notifies via D-Bus with a short, replaceable progress popup.
+Anvil multimedia shortcuts remain a separate upstream milestone because
+Anvil v0.3.0 does not yet handle XF86 media keys. No privileged global
+keyboard event listener is installed. See `docs/roadmap.md`.

@@ -14,7 +14,7 @@ for exe in anvil anvilctl; do
   install -Dm755 "$work/$name/$exe" "$root/usr/local/bin/$exe"
 done
 mkdir -p "$root/etc/skel/.config/anvil"
-sed 's@^startup = \[\]@startup = ["/usr/local/lib/kova/set-wallpaper"]@' \
+sed 's@^startup = \[\]@startup = ["mako", "/usr/local/lib/kova/set-wallpaper"]@' \
   "$work/$name/config.toml" > "$root/etc/skel/.config/anvil/config.toml"
 install -Dm644 "$work/$name/anvil.desktop" "$root/usr/share/wayland-sessions/anvil.desktop"
 sed -i 's@Exec=/usr/local/bin/anvil@Exec=/usr/local/bin/kova-session@' \

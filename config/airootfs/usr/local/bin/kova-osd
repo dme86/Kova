@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+# Kova audio and backlight control with an upper-right Wayland OSD (mako).
+# Tool overrides allow hardware-free CI tests; installed users get defaults.
+WPCTL=${KOVA_WPCTL:-wpctl}
+BRIGHTNESSCTL=${KOVA_BRIGHTNESSCTL:-brightnessctl}
+NOTIFY=${KOVA_NOTIFY_SEND:-notify-send}
+usage() {
+  cat <<'HELP'
+Usage:
+  kova-osd volume up|down|mute
+  kova-osd brightness up|down
+Audio uses PipeWire (wpctl), brightness uses the hardware backlight.
+A running mako notification server displays a 1.8-second notification.
+HELP
+}
+if [[ ${1:-} == '--help' || ${1:-} == '-h' ]]; then
+  usage
+  exit 0
+fi
+[[ $# == 2 ]] || { usage >&2; exit 2; }
+
+notify_level() {
+  local key=$1 icon=$2 title=$3 percent=$4 label=$5
+  # Using a synchronous tag alone avoids duplicate popup stacks and avoids
+  # combining sync tags with replace-id (unsafe with some mako versions).
+  "$NOTIFY" --app-name=Kova --urgency=low --expire-time=1800 \
+    --icon="$icon" \
+    --hint="string:x-canonical-private-synchronous:kova-$key" \
+    --hint="int:value:$percent" \
+    "$title" "$label" || true
+}
+
+case "$1" in
+  volume)
+    case "$2" in
+      up)   "$WPCTL" set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+ ;;
+      down) "$WPCTL" set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%- ;;
+      mute) "$WPCTL" set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
+      *) usage >&2; exit 2 ;;
+    esac
+    state=$(LC_ALL=C "$WPCTL" get-volume @DEFAULT_AUDIO_SINK@)
+    [[ "$state" =~ Volume:[[:space:]]*([0-9]+([.][0-9]+)?) ]] ||
+      { echo "Could not parse wpctl output: $state" >&2; exit 1; }
+    volume=${BASH_REMATCH[1]}
+    percent=$(awk -v v="$volume" 'BEGIN { printf "%.0f", v * 100 }')
+    if (( percent > 100 )); then percent=100; fi
+    if [[ "$state" == *'[MUTED]'* ]]; then
+      notify_level volume audio-volume-muted "Audio muted" "$percent" "Muted"
+    else
+      notify_level volume audio-volume-high "Volume" "$percent" "$percent%"
+    fi
+    ;;
+  brightness)
+    case "$2" in
+      up)   "$BRIGHTNESSCTL" -q -c backlight set '+5%' ;;
+      down) "$BRIGHTNESSCTL" -q -c backlight set '5%-' ;;
+      *) usage >&2; exit 2 ;;
+    esac
+    current=$("$BRIGHTNESSCTL" -c backlight get)
+    maximum=$("$BRIGHTNESSCTL" -c backlight max)
+    [[ "$current" =~ ^[0-9]+$ && "$maximum" =~ ^[0-9]+$ ]] ||
+      { echo "Cannot read hardware backlight" >&2; exit 1; }
+    (( maximum > 0 )) || { echo "No available backlight" >&2; exit 1; }
+    percent=$(( (100 * current + maximum / 2) / maximum ))
+    if (( percent > 100 )); then percent=100; fi
+    notify_level brightness display-brightness-symbolic "Brightness" "$percent" "$percent%"
+    ;;
+  *) usage >&2; exit 2 ;;
+esac

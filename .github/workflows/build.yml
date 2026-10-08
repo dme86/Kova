@@ -23,6 +23,8 @@ jobs:
           for file in scripts/*.sh config/airootfs/usr/local/lib/kova/*; do
             bash -n "$file"
           done
+      - name: Test Wayland audio and brightness OSD (offline)
+        run: bash tests/test-osd.sh
       - name: Test mirror updater without network
         run: bash tests/test-mirrors.sh
       - name: Validate Fish configuration

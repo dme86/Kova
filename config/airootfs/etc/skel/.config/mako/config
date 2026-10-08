@@ -1,0 +1,28 @@
+# Kova notifications — Wayland layer-shell (mako)
+anchor=top-right
+layer=overlay
+sort=-time
+max-visible=4
+width=320
+height=110
+outer-margin=14
+margin=8
+padding=12,16
+border-size=2
+border-radius=12
+background-color=#191c26ee
+text-color=#e2e8f0ff
+border-color=#7aa2f7ff
+progress-color=over #7aa2f7ff
+font=monospace 11
+icons=1
+max-icon-size=32
+default-timeout=4500
+
+[app-name=Kova]
+default-timeout=1800
+history=0
+
+[urgency=critical]
+border-color=#f7768eff
+default-timeout=0
