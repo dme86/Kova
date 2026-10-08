@@ -1,0 +1,11 @@
+[Unit]
+Description=Check battery while user is logged into Anvil
+
+[Timer]
+OnActiveSec=30s
+OnUnitActiveSec=1min
+AccuracySec=15s
+Unit=kova-battery.service
+
+[Install]
+WantedBy=timers.target

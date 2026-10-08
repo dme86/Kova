@@ -18,6 +18,9 @@ ln -s ../kova-ci-smoke.service "$PROFILE/airootfs/etc/systemd/system/multi-user.
 mkdir -p "$PROFILE/airootfs/etc/systemd/system/timers.target.wants"
 ln -s ../kova-mirrors.timer "$PROFILE/airootfs/etc/systemd/system/timers.target.wants/kova-mirrors.timer"
 ln -s ../kova-news.timer "$PROFILE/airootfs/etc/systemd/system/timers.target.wants/kova-news.timer"
+# Global user-timer enablement applies to the live user and future accounts.
+mkdir -p "$PROFILE/airootfs/etc/systemd/user/timers.target.wants"
+ln -s /usr/lib/systemd/user/kova-battery.timer "$PROFILE/airootfs/etc/systemd/user/timers.target.wants/kova-battery.timer"
 cat >> "$PROFILE/packages.x86_64" <<'PKGS'
 fish
 neovim
@@ -107,6 +110,7 @@ file_permissions["/usr/local/lib/kova/update-news"]="0:0:755"
 file_permissions["/usr/local/lib/kova/update-anvil"]="0:0:755"
 file_permissions["/usr/local/lib/kova/update-wallpapers"]="0:0:755"
 file_permissions["/usr/local/lib/kova/set-wallpaper"]="0:0:755"
+file_permissions["/usr/local/lib/kova/check-battery"]="0:0:755"
 # The three default Rust search commands are installed into /usr/local/bin.
 file_permissions["/usr/local/bin/grep"]="0:0:755"
 file_permissions["/usr/local/bin/find"]="0:0:755"

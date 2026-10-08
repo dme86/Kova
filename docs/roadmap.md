@@ -48,3 +48,14 @@ do not infer that a device marked connected has working Internet.
 Later: validate icon rendering and clicking across multiple displays
 and hardware, consider NetworkManager D-Bus signals instead of periodic
 `nmcli` queries, and provide a more integrated Wayland selector if desired.
+
+## Low-battery notifications — implemented
+
+A globally enabled user-level `kova-battery.timer` polls sysfs battery
+charge and status every minute and uses `notify-send`/mako for 20%, 10%
+and 5% warnings. Per-user state prevents repeat notifications, and the
+state is reset once batteries are charged, removed, or above 20%.
+No system-wide ACPI daemon is installed. Hardware testing should verify
+battery labels beyond BAT0/BAT1, multiple batteries and critical notifications.
+A future UPower D-Bus subscriber could replace periodic polling if immediate
+power-state notifications become useful.

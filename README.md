@@ -70,6 +70,25 @@ inherit Alacritty and Mako config via `/etc/skel`.
 Kova now pins **Anvil v0.3.3** and enables native XF86 volume/brightness
 shortcuts mapped to `kova-osd` in the default Anvil configuration.
 
+## Low battery warnings
+
+Kova warns laptop users using existing **mako** and `notify-send`. A
+per-user **systemd timer** reads Linux battery information from
+`/sys/class/power_supply/BAT*/` once per minute, with no additional
+daemon, network access, root permissions, `acpid` or `upower` required.
+Warnings fire when a discharging battery reaches **20%, 10% and 5%**.
+The critical 5% notification stays visible; earlier warnings disappear.
+Each threshold is notified at most once per discharge cycle and resets
+on charging or after recovering above 20%. Machines with no battery
+produce no notifications.
+
+`systemctl --user status kova-battery.timer` inspects the background
+check. `systemctl --user stop kova-battery.timer` disables it until
+the next login, or `systemctl --user mask --now kova-battery.timer`
+to opt out persistently in that user's account (mask overrides the global timer). The same unit is globally enabled
+for new user accounts and the live environment. Battery thresholds
+are tested without hardware using a mocked sysfs and notification sink.
+
 ## Kova notifications and media controls
 
 Kova uses **mako** (Wayland layer-shell) for notifications and **libnotify**

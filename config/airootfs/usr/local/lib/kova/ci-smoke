@@ -93,6 +93,16 @@ test -n "$(find /var/lib/kova/wallpapers/files -type f -name '*.png' -print -qui
 /usr/local/bin/kova news --summary >/dev/null
 log "KOVA_CI_STEP installer-preview passed"
 
+stage="battery notifications"
+test -x /usr/local/lib/kova/check-battery
+test -f /usr/lib/systemd/user/kova-battery.service
+test -f /usr/lib/systemd/user/kova-battery.timer
+test -L /etc/systemd/user/timers.target.wants/kova-battery.timer
+test -r /etc/systemd/user/timers.target.wants/kova-battery.timer
+# Live QEMU usually has no battery; the service must succeed without one.
+/usr/local/lib/kova/check-battery
+log "KOVA_CI_STEP battery-notifications passed"
+
 stage="available CLI tools"
 for cmd in kova fish nvim rg fd eza btm dust procs dysk sd pacman git; do
   command -v "$cmd" >/dev/null

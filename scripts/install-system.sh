@@ -96,12 +96,15 @@ arch-chroot "$target" locale-gen
 for file in /usr/local/bin/kova /usr/local/bin/anvil /usr/local/bin/anvilctl /usr/local/bin/kova-session /usr/local/bin/kova-osd; do
   install -Dm755 "$file" "$target$file"
 done
-for name in update-mirrors update-news update-anvil update-wallpapers set-wallpaper; do
+for name in update-mirrors update-news update-anvil update-wallpapers set-wallpaper check-battery; do
   install -Dm755 "/usr/local/lib/kova/$name" "$target/usr/local/lib/kova/$name"
 done
 for name in kova-mirrors kova-news kova-update-anvil kova-update-wallpapers; do
   install -Dm644 "/etc/systemd/system/$name.service" "$target/etc/systemd/system/$name.service"
   install -Dm644 "/etc/systemd/system/$name.timer" "$target/etc/systemd/system/$name.timer"
+done
+for name in kova-battery.service kova-battery.timer; do
+  install -Dm644 "/usr/lib/systemd/user/$name" "$target/usr/lib/systemd/user/$name"
 done
 install -Dm644 /etc/greetd/config.toml "$target/etc/greetd/config.toml"
 install -Dm644 /etc/fonts/conf.d/70-kova-monospace.conf "$target/etc/fonts/conf.d/70-kova-monospace.conf"
@@ -124,6 +127,7 @@ arch-chroot "$target" passwd -l root
 arch-chroot "$target" systemctl enable NetworkManager.service systemd-timesyncd.service greetd.service \
   snapper-timeline.timer snapper-cleanup.timer kova-mirrors.timer \
   kova-news.timer kova-update-anvil.timer kova-update-wallpapers.timer
+arch-chroot "$target" systemctl --global enable kova-battery.timer
 arch-chroot "$target" snapper -c root create --description 'Kova first installation'
 arch-chroot "$target" bootctl --esp-path=/boot --no-variables install
 uuid=$(blkid -s UUID -o value "$root")

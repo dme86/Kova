@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+# Read battery data as the logged-in user; no acpid or root daemon needed.
+supply_root=${KOVA_POWER_SUPPLY_ROOT:-/sys/class/power_supply}
+state_root=${KOVA_BATTERY_STATE_ROOT:-${XDG_STATE_HOME:-$HOME/.local/state}/kova}
+notify=${KOVA_NOTIFY_SEND:-notify-send}
+state_file="$state_root/battery-warning"
+
+minimum=101
+found=0
+shopt -s nullglob
+for battery in "$supply_root"/BAT*; do
+  [[ -d "$battery" && -r "$battery/type" && -r "$battery/status" && -r "$battery/capacity" ]] || continue
+  IFS= read -r kind < "$battery/type" || continue
+  [[ "$kind" == Battery ]] || continue
+  found=1
+  IFS= read -r status < "$battery/status" || continue
+  [[ "$status" == Discharging ]] || continue
+  IFS= read -r percentage < "$battery/capacity" || continue
+  [[ "$percentage" =~ ^[0-9]{1,3}$ ]] || continue
+  (( percentage <= 100 )) || continue
+  if (( percentage < minimum )); then minimum=$percentage; fi
+done
+
+# AC, no battery or a sufficiently recharged battery starts a new cycle.
+if (( !found || minimum == 101 || minimum > 20 )); then
+  rm -f -- "$state_file"
+  exit 0
+fi
+level=20
+if (( minimum <= 5 )); then level=5
+elif (( minimum <= 10 )); then level=10
+fi
+
+previous=0
+if [[ -r "$state_file" ]]; then
+  IFS= read -r previous < "$state_file" || previous=0
+  [[ "$previous" == 20 || "$previous" == 10 || "$previous" == 5 ]] || previous=0
+fi
+if (( previous != 0 && level >= previous )); then exit 0; fi
+
+case "$level" in
+  20)
+    title="Battery low"
+    body="Battery at $minimum%. Consider connecting the charger."
+    icon=battery-low-symbolic
+    urgency=normal
+    timeout=10000
+    ;;
+  10)
+    title="Battery very low"
+    body="Only $minimum% remaining. Connect power soon."
+    icon=battery-caution-symbolic
+    urgency=normal
+    timeout=15000
+    ;;
+  5)
+    title="Battery critical"
+    body="Only $minimum% remaining! Save your work and connect power."
+    icon=battery-empty-symbolic
+    urgency=critical
+    timeout=0
+    ;;
+esac
+
+# Do not record an alert until a notification server accepts it.
+if "$notify" --app-name="Kova Battery" --urgency="$urgency" \
+  --icon="$icon" --expire-time="$timeout" \
+  --hint="string:x-canonical-private-synchronous:kova-battery" \
+  "$title" "$body"; then
+  mkdir -p -- "$state_root"
+  printf '%s\n' "$level" > "$state_file"
+fi
