@@ -39,6 +39,14 @@ PKGS
 awk '!seen[$0]++' "$PROFILE/packages.x86_64" > "$PROFILE/packages.x86_64.tmp"
 mv "$PROFILE/packages.x86_64.tmp" "$PROFILE/packages.x86_64"
 sed -i -E 's/^iso_name=.*/iso_name="kova"/; s/^iso_publisher=.*/iso_publisher="Kova Linux"/; s/^iso_application=.*/iso_application="Kova Linux Live Environment"/' "$PROFILE/profiledef.sh"
+# Expose kernel, initramfs and systemd output on QEMU's first serial port.
+# Keep tty0 as the primary console so the ISO also remains usable on real PCs.
+# Without this, syslinux appears on the serial log but the Linux boot is silent,
+# making it impossible to tell a boot failure from an inactive smoke-test unit.
+SYSLINUX_CFG="$PROFILE/syslinux/archiso_sys-linux.cfg"
+[[ -f "$SYSLINUX_CFG" ]] || { echo "Missing Archiso BIOS boot entry: $SYSLINUX_CFG" >&2; exit 1; }
+sed -i -E '/^APPEND /s|$| console=ttyS0,115200n8 console=tty0 loglevel=6 systemd.log_level=info systemd.log_target=kmsg|' "$SYSLINUX_CFG"
+grep -q 'console=ttyS0,115200n8' "$SYSLINUX_CFG"
 # ISO name/branding; keep upstream bootstrap and bootloader configurations unchanged.
 # Live networking follows the official releng configuration.
 mkdir -p "$ROOT/out"
