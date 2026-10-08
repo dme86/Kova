@@ -25,6 +25,14 @@ Interactive Fish sessions prefer `eza` for `ls`, `bat` for `cat`, `dust` for `du
 
 `grep`, `find`, and `xargs` are Rust binaries from pinned uutils releases, placed in `/usr/local/bin` and checked by SHA256 before inclusion. They are the **default commands across shells**, not merely Fish aliases. Pacman-owned GNU counterparts remain under `/usr/bin` for compatibility while we work toward Rust replacement packages. `rg` and `fd` remain available under their own names for their modern search behavior.
 
+## Automatic pacman mirrors
+
+Kova includes [rate-mirrors](https://github.com/westandskif/rate-mirrors), a Rust utility from Arch's official `extra` repository. A systemd timer schedules a first refresh after boot and a weekly refresh, with a 7-day timestamp preventing redundant benchmarks. Only currently synchronized HTTPS mirrors are considered. The new mirrorlist is checked before it atomically replaces the previous version. The last list is backed up at `/etc/pacman.d/mirrorlist.kova-previous`; if mirror ranking fails, the current list stays intact.
+
+Run `sudo systemctl start kova-mirrors.service` for a scheduled refresh, or `sudo KOVA_MIRRORS_FORCE=1 /usr/local/lib/kova/update-mirrors` to force a refresh. The preinstalled mirrorlist remains the fallback when offline. The installer will inherit the ranking and enable the same timer after installation.
+
+The upstream `rate-mirrors` license is **CC BY-NC-SA 3.0**; review its distribution/commercial-use restrictions before public releases.
+
 ## Live environment
 
 The live system uses the hostname `kova` and automatically logs in as `kova` on `tty1`, using Fish. The account is created during boot, with its password locked and passwordless `sudo` enabled for the live session.
@@ -86,7 +94,11 @@ The smoke-test service starts only in a virtual machine with `/dev/ttyS0`. It ve
 
 Kova's planned opinionated installer uses GPT, a 1 GiB FAT32 ESP, and a Btrfs root filesystem with ZSTD compression. The `@`, `@home`, `@snapshots`, and `@var_log` subvolumes separate OS state, home data, snapshot history, and logs. Snapper and `snap-pac` provide snapshots and snapshots around pacman operations. See [the installer architecture](docs/installer.md) for the layout, initialization sequence and limitations.
 
-**No destructive installer is shipped yet.** Partitioning and rollback need virtual-disk integration tests before users can install Kova on real disks.
+**No destructive installer is shipped yet.** The first install path will target an empty dedicated disk. A future dual-boot mode will use already unallocated space and preserve Windows/other OS partitions; see [installer architecture](docs/installer.md) for EFI, BitLocker and rollback constraints. Partitioning and rollback require disposable-VM integration tests before real hardware.
+
+## Kernel updates
+
+Installed Kova systems will continue to receive the signed Arch Linux `linux` kernel package and kernel-module updates through `pacman -Syu`. Kova-branded login and boot menus do not require a custom kernel or GitHub Actions artifact distribution. The upstream `-arch1` kernel version remains visible.
 
 ## Upstream
 

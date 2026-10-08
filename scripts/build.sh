@@ -11,11 +11,14 @@ cp -a "$ROOT/config/airootfs/." "$PROFILE/airootfs/"
 mkdir -p "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants"
 ln -s ../kova-live-user.service "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants/kova-live-user.service"
 ln -s ../kova-ci-smoke.service "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants/kova-ci-smoke.service"
+mkdir -p "$PROFILE/airootfs/etc/systemd/system/timers.target.wants"
+ln -s ../kova-mirrors.timer "$PROFILE/airootfs/etc/systemd/system/timers.target.wants/kova-mirrors.timer"
 cat >> "$PROFILE/packages.x86_64" <<'PKGS'
 fish
 neovim
 git
 networkmanager
+rate-mirrors
 eza
 bat
 fd
@@ -59,6 +62,7 @@ grep -q 'console=ttyS0,115200n8' "$SYSLINUX_CFG"
 cat >> "$PROFILE/profiledef.sh" <<'KOVA_PERMISSIONS'
 file_permissions["/usr/local/lib/kova/setup-live-user"]="0:0:755"
 file_permissions["/usr/local/lib/kova/ci-smoke"]="0:0:755"
+file_permissions["/usr/local/lib/kova/update-mirrors"]="0:0:755"
 # The three default Rust search commands are installed into /usr/local/bin.
 file_permissions["/usr/local/bin/grep"]="0:0:755"
 file_permissions["/usr/local/bin/find"]="0:0:755"

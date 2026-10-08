@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Mirror refresh keeps the previous list on network/validation failures.
+# The KOVA_* overrides are for offline CI tests.
+MIRRORLIST=${KOVA_MIRRORLIST:-/etc/pacman.d/mirrorlist}
+STAMP=${KOVA_MIRROR_STAMP:-/var/lib/kova/mirrorlist-updated}
+RANKER=${KOVA_RATE_MIRRORS:-/usr/bin/rate-mirrors}
+REFRESH_SECONDS=$((7 * 24 * 60 * 60))
+
+if [[ ${KOVA_MIRRORS_FORCE:-0} != 1 && -f "$STAMP" ]]; then
+  now=$(date +%s)
+  last=$(stat -c %Y -- "$STAMP")
+  if (( now >= last && now - last < REFRESH_SECONDS )); then
+    echo 'Kova: mirrorlist refreshed less than 7 days ago; skipping'
+    exit 0
+  fi
+fi
+
+[[ -x "$RANKER" ]] || { echo 'Kova: rate-mirrors not installed' >&2; exit 1; }
+dest_dir=$(dirname -- "$MIRRORLIST")
+mkdir -p -- "$dest_dir"
+tmp=$(mktemp "$dest_dir/.kova-mirrorlist.XXXXXXXX")
+trap 'rm -f -- "$tmp"' EXIT
+
+"$RANKER" --allow-root --protocol=https \
+  --disable-untested-fallback --max-mirrors-to-output=10 arch > "$tmp"
+
+count=0
+while IFS= read -r line || [[ -n "$line" ]]; do
+  if [[ "$line" == 'Server = https://'*'/$repo/os/$arch' ]]; then
+    ((count += 1))
+  elif [[ "$line" == 'Server = '* ]]; then
+    echo 'Kova: rejecting unsupported/non-HTTPS mirror entry' >&2
+    exit 1
+  fi
+done < "$tmp"
+if (( count < 3 )); then
+  echo "Kova: only $count suitable mirrors; preserving current list" >&2
+  exit 1
+fi
+chmod 0644 "$tmp"
+if [[ -f "$MIRRORLIST" ]]; then
+  cp -p -- "$MIRRORLIST" "$MIRRORLIST.kova-previous"
+fi
+mv -f -- "$tmp" "$MIRRORLIST"
+mkdir -p -- "$(dirname "$STAMP")"
+touch -- "$STAMP"
+echo "Kova: updated mirrorlist with $count ranked HTTPS mirrors"

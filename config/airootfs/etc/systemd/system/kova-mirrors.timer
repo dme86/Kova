@@ -1,0 +1,12 @@
+[Unit]
+Description=Kova: refresh package mirrors automatically
+
+[Timer]
+OnBootSec=5min
+OnCalendar=weekly
+RandomizedDelaySec=3min
+Persistent=true
+Unit=kova-mirrors.service
+
+[Install]
+WantedBy=timers.target

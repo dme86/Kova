@@ -51,6 +51,12 @@ systemctl is-active --quiet kova-live-user.service
 systemctl cat getty@tty1.service | grep -q -- '--autologin kova'
 log "KOVA_CI_STEP live-account passed"
 
+stage="automatic mirror refresh configuration"
+command -v rate-mirrors >/dev/null
+test -x /usr/local/lib/kova/update-mirrors
+systemctl is-enabled --quiet kova-mirrors.timer
+log "KOVA_CI_STEP mirrors passed"
+
 stage="available CLI tools"
 for cmd in fish nvim rg fd eza btm dust procs dysk sd pacman git; do
   command -v "$cmd" >/dev/null

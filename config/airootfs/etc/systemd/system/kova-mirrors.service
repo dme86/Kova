@@ -1,0 +1,11 @@
+[Unit]
+Description=Kova: rank Arch Linux package mirrors
+Documentation=https://wiki.archlinux.org/title/Mirrors
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/pacman.d/mirrorlist
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/kova/update-mirrors
+TimeoutStartSec=180

@@ -21,6 +21,8 @@ jobs:
           for file in scripts/*.sh config/airootfs/usr/local/lib/kova/*; do
             bash -n "$file"
           done
+      - name: Test mirror updater without network
+        run: bash tests/test-mirrors.sh
       - name: Validate Fish configuration
         run: |
           sudo apt-get update -qq
