@@ -1,0 +1,10 @@
+NAME="Kova Linux"
+PRETTY_NAME="Kova Linux"
+ID=kova
+ID_LIKE=arch
+BUILD_ID=rolling
+ANSI_COLOR="0;36"
+HOME_URL="https://github.com/dme86/Kova"
+DOCUMENTATION_URL="https://github.com/dme86/Kova#readme"
+SUPPORT_URL="https://github.com/dme86/Kova/issues"
+BUG_REPORT_URL="https://github.com/dme86/Kova/issues"

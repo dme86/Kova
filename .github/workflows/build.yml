@@ -26,7 +26,8 @@ jobs:
           docker run --rm --privileged \
             -v "$PWD:/repo" -w /repo \
             archlinux:latest bash -euc '
-              pacman -Syu --noconfirm --needed archiso curl git
+              pacman -Syu --noconfirm --needed archiso curl git fish
+              fish -n config/airootfs/etc/fish/conf.d/*.fish
               bash scripts/install-tide.sh config/airootfs
               bash scripts/install-neovim-config.sh
               bash scripts/build.sh

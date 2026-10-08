@@ -39,6 +39,8 @@ PKGS
 awk '!seen[$0]++' "$PROFILE/packages.x86_64" > "$PROFILE/packages.x86_64.tmp"
 mv "$PROFILE/packages.x86_64.tmp" "$PROFILE/packages.x86_64"
 sed -i -E 's/^iso_name=.*/iso_name="kova"/; s/^iso_publisher=.*/iso_publisher="Kova Linux"/; s/^iso_application=.*/iso_application="Kova Linux Live Environment"/' "$PROFILE/profiledef.sh"
+# Apply Kova boot menu branding to the copied upstream releng profile.
+bash "$ROOT/scripts/brand-profile.sh" "$PROFILE"
 # Expose kernel, initramfs and systemd output on QEMU's first serial port.
 # Keep tty0 as the primary console so the ISO also remains usable on real PCs.
 # Without this, syslinux appears on the serial log but the Linux boot is silent,

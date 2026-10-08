@@ -9,6 +9,10 @@ trap 'result=$?; echo "KOVA_CI_FAIL (exit $result, line $LINENO): $BASH_COMMAND"
 echo "KOVA_CI_BEGIN"
 
 test "$(cat /etc/hostname)" = "kova"
+. /etc/os-release
+test "$ID" = "kova"
+test "$ID_LIKE" = "arch"
+test "$PRETTY_NAME" = "Kova Linux"
 test "$(getent passwd kova | cut -d: -f7)" = "/usr/bin/fish"
 test -f /home/kova/.config/nvim/init.lua
 test -f /home/kova/.config/nvim/lazy-lock.json
@@ -20,6 +24,19 @@ done
 
 # Test the actual live user rather than executing everything as root.
 runuser -u kova -- fish -c 'type -q tide'
+# Verify interactive Fish defaults and exercise the Rust-backed file tools.
+runuser -u kova -- env TERM=dumb fish -ic '
+  functions -q ls ll la cat cp mv rm mkdir touch sort wc; or exit 1
+  set -l tmp (command mktemp -d)
+  or exit 1
+  echo kova > $tmp/original
+  cp $tmp/original $tmp/copied; or exit 1
+  mv $tmp/copied $tmp/moved; or exit 1
+  test (cat $tmp/moved) = kova; or exit 1
+  rm $tmp/moved; or exit 1
+  test ! -e $tmp/moved; or exit 1
+  command rm -r $tmp
+' </dev/null
 runuser -u kova -- nvim --headless --clean +qall!
 runuser -u kova -- sudo -n true
 

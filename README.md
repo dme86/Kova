@@ -17,7 +17,13 @@ Kova is a minimal, Arch-based Linux live environment with a Rust-friendly comman
 - **Development tools** — `git`, `fzf`, `lazygit`, `tmux`, `npm`, `go`, `tree-sitter-cli`, `unzip`, and build tools
 - **Networking** — NetworkManager, inherited from Archiso
 
-The Rust utilities complement the standard system commands. GNU Coreutils remain available for script compatibility.
+## Branding and command-line defaults
+
+The live system identifies as Kova Linux via `/etc/os-release` (`ID=kova`, `ID_LIKE=arch`) and uses Kova-branded BIOS/UEFI boot entries and login text. The upstream Arch kernel, packaging, and repository provenance are retained.
+
+Interactive Fish sessions prefer `eza` for `ls`, `bat` for `cat`, and the uutils implementations of `cp`, `mv`, `rm`, `mkdir`, `touch`, `sort`, and `wc`. These are Fish aliases, not replacements for executables in `/usr/bin`. System services and non-interactive scripts retain the original commands to preserve compatibility.
+
+`rg` and `fd` deliberately keep their own command names: their options and behavior are not interchangeable with `grep` and `find`.
 
 ## Live environment
 
