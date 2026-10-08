@@ -76,7 +76,7 @@ pacstrap -K "$target" \
   base linux linux-firmware mkinitcpio btrfs-progs snapper snap-pac \
   sudo fish git curl jq rate-mirrors neovim networkmanager \
   eza bat fd ripgrep bottom dust procs dysk sd uutils-coreutils \
-  zoxide fzf tmux starship feh wayland mesa libinput libseat seatd \
+  zoxide fzf tmux starship feh wayland mesa libinput seatd \
   greetd greetd-tuigreet swaybg foot xorg-xwayland wl-clipboard \
   zram-generator dosfstools efibootmgr
 # Snapper create-config requires .snapshots to be unmounted.

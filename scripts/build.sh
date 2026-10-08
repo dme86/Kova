@@ -35,7 +35,6 @@ jq
 wayland
 mesa
 libinput
-libseat
 seatd
 greetd
 greetd-tuigreet
