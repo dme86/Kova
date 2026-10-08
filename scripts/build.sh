@@ -17,12 +17,34 @@ ln -s ../kova-live-user.service "$PROFILE/airootfs/etc/systemd/system/multi-user
 ln -s ../kova-ci-smoke.service "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants/kova-ci-smoke.service"
 mkdir -p "$PROFILE/airootfs/etc/systemd/system/timers.target.wants"
 ln -s ../kova-mirrors.timer "$PROFILE/airootfs/etc/systemd/system/timers.target.wants/kova-mirrors.timer"
+ln -s ../kova-news.timer "$PROFILE/airootfs/etc/systemd/system/timers.target.wants/kova-news.timer"
 cat >> "$PROFILE/packages.x86_64" <<'PKGS'
 fish
 neovim
 git
 networkmanager
 rate-mirrors
+arch-install-scripts
+gptfdisk
+parted
+btrfs-progs
+dosfstools
+snapper
+snap-pac
+jq
+wayland
+mesa
+libinput
+libseat
+seatd
+greetd
+greetd-tuigreet
+swaybg
+feh
+foot
+xorg-xwayland
+wl-clipboard
+zram-generator
 eza
 bat
 fd
@@ -68,6 +90,14 @@ file_permissions["/usr/local/lib/kova/setup-live-user"]="0:0:755"
 file_permissions["/usr/local/lib/kova/ci-smoke"]="0:0:755"
 file_permissions["/usr/local/lib/kova/update-mirrors"]="0:0:755"
 file_permissions["/usr/local/bin/kova"]="0:0:755"
+file_permissions["/usr/local/bin/anvil"]="0:0:755"
+file_permissions["/usr/local/bin/anvilctl"]="0:0:755"
+file_permissions["/usr/local/bin/kova-session"]="0:0:755"
+file_permissions["/usr/local/lib/kova/install-system"]="0:0:755"
+file_permissions["/usr/local/lib/kova/update-news"]="0:0:755"
+file_permissions["/usr/local/lib/kova/update-anvil"]="0:0:755"
+file_permissions["/usr/local/lib/kova/update-wallpapers"]="0:0:755"
+file_permissions["/usr/local/lib/kova/set-wallpaper"]="0:0:755"
 # The three default Rust search commands are installed into /usr/local/bin.
 file_permissions["/usr/local/bin/grep"]="0:0:755"
 file_permissions["/usr/local/bin/find"]="0:0:755"

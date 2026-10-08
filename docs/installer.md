@@ -1,10 +1,10 @@
 # Kova installer architecture
 
-**Current state:** A read-only Rust installer planner exists in the Cargo
-workspace. `kova install` interactively discovers disks and previews an
-installation; `kova install --dry-run --demo` shows a completely synthetic
-layout. There are **no disk-writing code paths** yet. All on-disk
-installation steps described below remain a design until tested in QEMU.
+**Current state:** `kova install --apply` can erase a dedicated disk
+and perform UEFI/GPT, Btrfs and Snapper installation. This is destructive
+experimental code, NOT YET VERIFIED end-to-end under QEMU/OVMF. Only use
+disposable virtual disks for evaluation until installed-system boots are
+proven. The previous read-only preview remains available.
 
 Kova is opinionated about the installed Linux system, **not** about
 destroying an existing operating system. The first implementation will
@@ -28,9 +28,11 @@ NTP is automatic via systemd-timesyncd; no time-sync choice is necessary.
 Btrfs, GPT, ZSTD, subvolume layout, Snapper and systemd-boot are fixed Kova
 defaults, not user-facing filesystem/bootloader menus.
 
-The read-only planner is implemented and unit-tested; no command capable
-of formatting real disks is shipped until disposable-VM end-to-end tests pass.
-The planner never asks for a password because no user is created yet.
+For `--apply`, the Rust CLI requires a TTY, a typed confirmation of
+the precise disk path, and a twice-entered password. The root backend
+re-checks major:minor device identity, UEFI mode, size, mounts, and
+removable status before any wipe. It erases the entire disk; there is
+no resize/dual-boot mode yet. The installer is NOT safety-certified.
 
 ## Installation modes and dual boot
 
@@ -128,9 +130,9 @@ Do not advertise bootable automatic rollbacks before a complete VM test.
   live-install-medium identification**.
 - **M2b:** add stable block-device identity, live-media exclusion and
   a typed confirmation before any write. Implement a true Rust TUI.
-- **M3:** implement actual partitioning, mounting, pacstrap, users, fstab,
-  mkinitcpio, UEFI bootloader, Snapper and pacman hooks; only on an attached
-  **disposable QEMU virtual disk** in CI.
+- **M3 (code drafted):** destructive partitioning, pacstrap, Snapper,
+  systemd-boot, greetd and Anvil. Still needs disposable-VM install tests.
+  Do not use on production disks before that milestone.
 - **M4:** prove first boot from installed disk with the installation ISO
   removed; upgrade, snapshot, simulate a failed upgrade and perform recovery.
   UEFI/OVMF must be tested before any hardware release.
@@ -156,3 +158,25 @@ Actions artifacts for installed-system updates.
 If a custom Kova kernel ever becomes essential, publish versioned,
 signed pacman packages in a durable repository with normal `pacman -Syu`
 support. This is not part of the initial release.
+
+## Kova desktop and news integration
+
+The installed system ships greetd + tuigreet (TTY login) and executes
+`kova-session` to start Anvil on Wayland. Anvil v0.3.0 is pinned
+at ISO build time by SHA256. The Arch-compatible `feh` utility is
+included for image viewing, but `swaybg` drives backgrounds via
+Anvil's layer-shell feature. Users inherit an Anvil startup config
+from `/etc/skel`; one wallpaper is randomly selected on every login.
+
+The shared wallpapers live in `/var/lib/kova/wallpapers` and are
+updated daily using a shallow Git checkout. Anvil is updated weekly
+from GitHub **Releases** with a SHA256 check and an atomic executable
+replacement, taking effect on the next session. Both update services
+preserve existing files when downloads fail.
+
+`kova-news.timer` downloads the official Arch RSS feed into a
+global read-only cache. The per-user CLI filters it against locally
+installed packages, records acknowledged links in
+`~/.local/state/kova/news-read`, and provides an offline-only Fish
+login summary. Matching is conservative but heuristic, not a
+guarantee that all action-required announcements are detected.

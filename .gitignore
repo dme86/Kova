@@ -9,3 +9,12 @@ config/airootfs/etc/fish/completions/tide*.fish
 # Rust workspace outputs and staged ISO binary
 target/
 config/airootfs/usr/local/bin/kova
+
+# Pulled source assets staged only into generated live image
+config/airootfs/var/lib/kova/wallpapers/
+config/airootfs/usr/local/bin/anvil
+config/airootfs/usr/local/bin/anvilctl
+config/airootfs/usr/local/share/kova/anvil-version
+config/airootfs/usr/local/lib/kova/install-system
+config/airootfs/etc/skel/.config/anvil/config.toml
+config/airootfs/usr/share/wayland-sessions/anvil.desktop

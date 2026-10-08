@@ -3,10 +3,11 @@ name = "kova-cli"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Kova Linux command line entrypoint"
+description = "Unified Kova Linux command-line frontend"
 
 [dependencies]
 kova-installer = { path = "../kova-installer" }
+kova-news = { path = "../kova-news" }
 
 [[bin]]
 name = "kova"

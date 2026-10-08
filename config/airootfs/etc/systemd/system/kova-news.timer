@@ -1,0 +1,8 @@
+[Unit]
+Description=Kova: refresh Arch news cache
+[Timer]
+OnBootSec=4min
+OnUnitActiveSec=6h
+Persistent=true
+[Install]
+WantedBy=timers.target

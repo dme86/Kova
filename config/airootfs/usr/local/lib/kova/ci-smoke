@@ -61,6 +61,14 @@ stage="Rust Kova installer preview"
 test -x /usr/local/bin/kova
 /usr/local/bin/kova install --dry-run --demo | /usr/bin/grep -q 'NO PARTITIONS OR FILES WERE MODIFIED'
 /usr/local/bin/kova install --list-disks >/dev/null
+test -x /usr/local/lib/kova/install-system
+test -x /usr/local/bin/anvil
+test -x /usr/local/bin/anvilctl
+test -x /usr/local/bin/kova-session
+test -f /etc/greetd/config.toml
+test -f /etc/skel/.config/anvil/config.toml
+test -n "$(find /var/lib/kova/wallpapers/files -type f -name '*.png' -print -quit)"
+/usr/local/bin/kova news --summary >/dev/null
 log "KOVA_CI_STEP installer-preview passed"
 
 stage="available CLI tools"

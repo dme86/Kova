@@ -1,0 +1,8 @@
+[Unit]
+Description=Kova: update pinned Anvil compositor from GitHub Releases
+Wants=network-online.target
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/kova/update-anvil
+TimeoutStartSec=180

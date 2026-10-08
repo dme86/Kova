@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+# GitHub releases are update transport, NOT short-lived Actions artifacts.
+# Verify archive digest using the release's signed-off sidecar checksum.
+api=https://api.github.com/repos/dme86/anvil/releases/latest
+json=$(curl -fLsS --retry 2 --max-time 15 "$api")
+tag=$(printf '%s' "$json" | jq -r '.tag_name')
+[[ $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+current=$(cat /usr/local/share/kova/anvil-version 2>/dev/null || true)
+[[ $tag != "$current" ]] || exit 0
+version=${tag#v}
+name="anvil-$version-x86_64-unknown-linux-gnu"
+base="https://github.com/dme86/anvil/releases/download/$tag/$name.tar.gz"
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+curl -fLsS --retry 2 --max-time 60 "$base" -o "$work/$name.tar.gz"
+curl -fLsS --retry 2 --max-time 15 "$base.sha256" -o "$work/$name.tar.gz.sha256"
+(cd "$work" && sha256sum -c "$name.tar.gz.sha256")
+tar -xzf "$work/$name.tar.gz" -C "$work"
+for exe in anvil anvilctl; do
+  [[ -x "$work/$name/$exe" ]] || exit 1
+done
+for exe in anvil anvilctl; do
+  install -m755 "$work/$name/$exe" "/usr/local/bin/.$exe.kova-new"
+  mv -f "/usr/local/bin/.$exe.kova-new" "/usr/local/bin/$exe"
+done
+printf '%s\n' "$tag" > /usr/local/share/kova/anvil-version
+echo "Anvil upgraded to $tag (restart session to use new binary)"

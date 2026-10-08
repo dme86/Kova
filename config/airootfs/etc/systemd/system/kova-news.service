@@ -1,0 +1,8 @@
+[Unit]
+Description=Kova: fetch official Arch Linux news feed
+Wants=network-online.target
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/kova/update-news
+TimeoutStartSec=45
