@@ -79,6 +79,12 @@ test -f /usr/share/icons/Adwaita/symbolic/status/audio-volume-muted-symbolic.svg
 /usr/bin/grep -Fqx 'terminal = "alacritty"' /etc/skel/.config/anvil/config.toml
 /usr/bin/grep -Fqx 'volume_up = "kova-osd volume up"' /etc/skel/.config/anvil/config.toml
 /usr/bin/grep -Fqx 'brightness_down = "kova-osd brightness down"' /etc/skel/.config/anvil/config.toml
+/usr/bin/grep -Fqx '[bar.network]' /etc/skel/.config/anvil/config.toml
+/usr/bin/grep -Fqx 'enabled = true' /etc/skel/.config/anvil/config.toml
+/usr/bin/grep -Fqx 'click_command = "alacritty -e nmtui-connect"' /etc/skel/.config/anvil/config.toml
+for cmd in nmcli nmtui-connect; do command -v "$cmd" >/dev/null; done
+test -d /usr/share/fonts
+
 test -x /usr/local/bin/kova-osd
 /usr/local/bin/kova-osd --help | /usr/bin/grep -q 'kova-osd volume'
 /usr/bin/grep -q '"mako"' /etc/skel/.config/anvil/config.toml

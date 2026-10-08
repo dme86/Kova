@@ -35,9 +35,21 @@ Kova's Cargo workspace contains two internal Rust crates and one `kova` executab
 
 ## Anvil Wayland desktop and wallpaper synchronization
 
-The default session is [Anvil](https://github.com/dme86/anvil), launched after login with `greetd` and `tuigreet`. The ISO includes pinned, SHA256-verified Anvil v3.0.1 (an all-features release with layer-shell/XWayland); a weekly systemd timer downloads newer **GitHub Releases**, checks their SHA256 file and installs the new binary for the next login.
+The default session is [Anvil](https://github.com/dme86/anvil), launched after login with `greetd` and `tuigreet`. The ISO includes pinned, SHA256-verified Anvil v0.3.3 (an all-features release with layer-shell/XWayland); a weekly systemd timer downloads newer **GitHub Releases**, checks their SHA256 file and installs the new binary for the next login.
 
 The [wallpapers](https://github.com/dme86/.wallpapers) are shallow-cloned into the live image for offline first login and copied to installed machines. A daily systemd timer updates the root-owned repository. Anvil's default config under `/etc/skel` starts `swaybg` with one random image at each login; newly created users inherit the same config. Kova deliberately does not include `feh`: `swaybg` handles wallpapers natively on Wayland.
+
+The dwm-style Anvil bar has a **clickable network icon** by default:
+Ethernet, Wi-Fi and offline each get a dedicated Nerd Font glyph.
+Clicking it launches `alacritty -e nmtui-connect` for the NetworkManager
+Wi-Fi selector. The native bar polls `nmcli` for the current device state,
+without an extra daemon; `acpid` is not needed for network connectivity.
+The icon reports link/connection status, not a guarantee of Internet access.
+Vanilla Anvil keeps this integration opt-in.
+
+The earlier upstream versions named `3.0.1` and `3.0.2` were misnumbered;
+the corrected Anvil development series is `0.3.x`, and Kova now pins
+`v0.3.3` with its release SHA256.
 
 Anvil DRM/KMS, the greetd session and the destructive installer are still experimental and need hardware and disposable-VM integration testing before a public release.
 
@@ -55,7 +67,7 @@ status-bar glyphs render consistently. **Adwaita icons** supply the image
 icons used by mako for sound and brightness notifications. New user accounts
 inherit Alacritty and Mako config via `/etc/skel`.
 
-Kova now pins **Anvil v3.0.1** and enables native XF86 volume/brightness
+Kova now pins **Anvil v0.3.3** and enables native XF86 volume/brightness
 shortcuts mapped to `kova-osd` in the default Anvil configuration.
 
 ## Kova notifications and media controls
@@ -80,7 +92,7 @@ buttons are pressed repeatedly. The dark themed config lives in
 starts mako automatically on login.
 
 **Hardware volume/brightness keybindings are enabled by default.** Kova uses
-Anvil v3.0.1 with its new `[media]` mappings to `kova-osd`. Physical
+Anvil v0.3.3 with its new `[media]` mappings to `kova-osd`. Physical
 hardware-key behavior still needs on-device validation.
 See [the roadmap](docs/roadmap.md) for follow-up testing.
 

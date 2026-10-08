@@ -162,7 +162,7 @@ support. This is not part of the initial release.
 ## Kova desktop and news integration
 
 The installed system ships greetd + tuigreet (TTY login) and executes
-`kova-session` to start Anvil on Wayland. Anvil v3.0.1 is pinned
+`kova-session` to start Anvil on Wayland. Anvil v0.3.3 is pinned
 at ISO build time by SHA256. `feh` is intentionally omitted; `swaybg` drives backgrounds via
 Anvil's layer-shell feature. Users inherit an Anvil startup config
 from `/etc/skel`; one wallpaper is randomly selected on every login.
@@ -188,7 +188,7 @@ blue-accented, top-right overlay. Standard `notify-send` comes from
 `libnotify`. PipeWire + WirePlumber provide `wpctl`; `brightnessctl`
 modifies supported hardware backlights. `kova-osd` changes each setting
 and notifies via D-Bus with a short, replaceable progress popup.
-Anvil v3.0.1 intercepts the five XF86 volume/brightness keys and
+Anvil v0.3.3 intercepts the five XF86 volume/brightness keys and
 executes the configured `kova-osd` commands without a privileged global
 keyboard event listener. Physical input-device validation is still required.
 See `docs/roadmap.md`.
@@ -197,9 +197,20 @@ See `docs/roadmap.md`.
 
 The live environment and installed system both install `alacritty`,
 `ttf-jetbrains-mono`, `ttf-nerd-fonts-symbols-mono` and
-`adwaita-icon-theme`. Anvil v3.0.1 launches Alacritty via Super+Return
+`adwaita-icon-theme`. Anvil v0.3.3 launches Alacritty via Super+Return
 and enables XF86 volume and brightness shortcuts to `kova-osd`.
 The system Fontconfig default is JetBrains Mono with Nerd Font fallback.
 Mako uses Adwaita audio/brightness icons and JetBrains Mono.
 All new accounts inherit default Alacritty/Mako/Anvil configs from
 `/etc/skel`; Fontconfig settings apply system-wide.
+
+## Native NetworkManager bar widget
+
+Kova enables Anvil's native `[bar.network]` indicator in the default
+configuration. The compositor checks Ethernet and Wi-Fi device state
+using NetworkManager's `nmcli` utility, paints Ethernet/Wi-Fi/offline
+glyphs using `Symbols Nerd Font Mono`, and keeps a precise click target.
+Left-click starts `alacritty -e nmtui-connect` and lets the authenticated
+user pick a Wi-Fi SSID. NetworkManager is enabled during installation;
+`acpid` is not installed just for network state. The icon reflects
+device connectivity, not verified Internet reachability.

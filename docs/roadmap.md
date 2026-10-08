@@ -22,7 +22,7 @@ SHA256 checksum verification.
 ## Native multimedia shortcuts — implemented, hardware validation pending
 
 Kova includes `mako`, `libnotify`, PipeWire/WirePlumber, `brightnessctl`
-and `kova-osd`. Anvil v3.0.1 adds configurable unmodified XF86 media keys;
+and `kova-osd`. Anvil v0.3.3 adds configurable unmodified XF86 media keys;
 Kova wires volume up/down/mute and brightness up/down to `kova-osd`.
 System font/icon defaults include JetBrains Mono, Nerd Fonts Symbols Mono,
 and Adwaita icons. The native session launches Alacritty by default.
@@ -37,3 +37,14 @@ Before allowing hardware installations: create a disposable UEFI/OVMF
 QEMU disk, install Kova using test credentials, reboot WITHOUT the ISO,
 verify user login and Wayland session, Snapper and `snap-pac` hooks,
 and recovery after kernel updates. Separate CI for dual boot and LUKS2.
+
+## Network bar icon — implemented, hardware validation pending
+
+Anvil v0.3.3 introduces an opt-in native NetworkManager icon. Kova
+enables it by default, supplies Nerd Font Symbols Mono, and opens the
+NetworkManager `nmtui-connect` interface in Alacritty when clicked.
+The icon differentiates Ethernet/Wi-Fi/disconnected link states;
+do not infer that a device marked connected has working Internet.
+Later: validate icon rendering and clicking across multiple displays
+and hardware, consider NetworkManager D-Bus signals instead of periodic
+`nmcli` queries, and provide a more integrated Wayland selector if desired.
