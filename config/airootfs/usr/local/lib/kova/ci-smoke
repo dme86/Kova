@@ -120,6 +120,13 @@ log "KOVA_CI_STEP cli-tools passed"
 
 stage="Tide as kova user"
 runuser -u kova -- fish -c 'type -q tide'
+test -f /etc/fish/conf.d/kova-tide.fish
+# The default prompt must be configured on the first interactive Fish session
+# and must not overwrite users' already saved universal variables.
+runuser -u kova -- env TERM=dumb fish -ic '
+  test "$tide_character_icon" = "❯"; or exit 1
+  test (string join " " $tide_left_prompt_items) = "pwd git character"; or exit 1
+'
 log "KOVA_CI_STEP tide passed"
 
 stage="interactive Fish Rust defaults"

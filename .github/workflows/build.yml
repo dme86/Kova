@@ -48,6 +48,24 @@ jobs:
           for file in config/airootfs/etc/fish/conf.d/*.fish; do
             fish -n "$file"
           done
+          # Test the distro-provided Tide values without installing Tide or writing
+          # persistent Fish variables into the runner user's actual home.
+          isolated=$(mktemp -d)
+          trap 'rm -rf "$isolated"' EXIT
+          XDG_CONFIG_HOME="$isolated" fish -c '
+            source config/airootfs/etc/fish/conf.d/kova-tide.fish
+            __kova_tide_defaults
+            test (string join " " $tide_left_prompt_items) = "pwd git character"; or exit 1
+            test "$tide_character_icon" = "❯"; or exit 1
+            test "$tide_git_color_branch" = "5FD700"; or exit 1
+            test "$tide_prompt_add_newline_before" = "false"; or exit 1
+            test (count $tide_right_prompt_items) -gt 10; or exit 1
+            test "$tide_cmd_duration_icon" = ""; or exit 1
+            set -U tide_git_color_branch AABBCC
+            __kova_tide_defaults
+            test "$tide_git_color_branch" = "AABBCC"; or exit 1
+            echo "Kova Tide defaults and per-user overrides passed"
+          '
 
   rust:
     name: Rust workspace tests and binary

@@ -53,6 +53,27 @@ the corrected Anvil development series is `0.3.x`, and Kova now pins
 
 Anvil DRM/KMS, the greetd session and the destructive installer are still experimental and need hardware and disposable-VM integration testing before a public release.
 
+## Default Fish prompt: Tide (no configuration wizard)
+
+Kova preconfigures **Tide v6 Lean** using the style, colors, glyphs and
+left/right prompt layout imported from the user's existing Fish setup.
+At the first interactive login, `/etc/fish/conf.d/kova-tide.fish` seeds
+**missing universal Fish variables**. Tide's asynchronous background prompt
+can then read the same values, and user modifications (for example via
+`set -U tide_git_color_branch ABCDEF`) are never overwritten on later
+logins. There is no first-login `tide configure` requirement.
+
+The two long arrays `tide_pwd_markers` and `tide_right_prompt_items`
+were clipped in the original configuration export; their remaining values
+currently follow Tide v6's Lean defaults. Update them when the complete
+existing values are available.
+
+Alacritty uses JetBrains Mono with the installed **Symbols Nerd Font Mono**
+fallback. Some Nerd Font private-use glyphs will not render inside a web
+browser/chat interface even though they display correctly in an appropriately
+configured terminal. Kova intentionally keeps the small Symbols font rather
+than adding a 200+ MB fully patched typeface.
+
 ## Kova default typography and terminal
 
 **Alacritty** is Kova's default Wayland terminal, launched by Anvil's
