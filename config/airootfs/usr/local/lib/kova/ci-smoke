@@ -1,20 +1,35 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# This runs only in a VM with a serial port. The CI runner reads the
-# unambiguous PASS/FAIL markers directly from QEMU's serial output.
-exec > /dev/ttyS0 2>&1
-trap 'result=$?; echo "KOVA_CI_FAIL (exit $result, line $LINENO): $BASH_COMMAND"; exit "$result"' ERR
+# Never share ttyS0 with serial-getty: systemd starts a serial login there.
+# Instead, send CI markers through the kernel log, which is also written to
+# the QEMU serial console via the Archiso console=ttyS0 kernel argument.
+exec 3>/dev/kmsg
+stage="startup"
+log() {
+  printf '<5>%s\n' "$*" >&3
+}
+on_exit() {
+  local rc=$?
+  trap - EXIT
+  if (( rc == 0 )); then
+    log "KOVA_CI_PASS"
+  else
+    log "KOVA_CI_FAIL exit=$rc stage=$stage"
+  fi
+}
+trap on_exit EXIT
+log "KOVA_CI_BEGIN"
 
-echo "KOVA_CI_BEGIN"
-
-test "$(cat /etc/hostname)" = "kova"
+stage="live identity and release"
+test "$(/usr/bin/cat /etc/hostname)" = "kova"
 . /etc/os-release
 test "$ID" = "kova"
 test "$ID_LIKE" = "arch"
 test "$PRETTY_NAME" = "Kova Linux"
-# Verify that ordinary command lookup selects the Rust replacements, while
-# the package-owned GNU implementations are left available in /usr/bin.
+log "KOVA_CI_STEP identity passed"
+
+stage="Rust grep/find/xargs binaries"
 for cmd in grep find xargs; do
   test -x "/usr/local/bin/$cmd"
   test "$(command -v "$cmd")" = "/usr/local/bin/$cmd"
@@ -25,21 +40,28 @@ grep -q 'rust is the default' "$tmp/check.txt"
 test "$(find "$tmp" -type f -name check.txt)" = "$tmp/check.txt"
 printf '%s\n' "$tmp/check.txt" | xargs grep -q 'rust is the default'
 rm -rf "$tmp"
+log "KOVA_CI_STEP rust-search passed"
 
+stage="live account and autologin"
 test "$(getent passwd kova | cut -d: -f7)" = "/usr/bin/fish"
 test -f /home/kova/.config/nvim/init.lua
 test -f /home/kova/.config/nvim/lazy-lock.json
 id -nG kova | tr ' ' '\n' | grep -qx wheel
 systemctl is-active --quiet kova-live-user.service
 systemctl cat getty@tty1.service | grep -q -- '--autologin kova'
+log "KOVA_CI_STEP live-account passed"
 
+stage="available CLI tools"
 for cmd in fish nvim rg fd eza btm dust procs dysk sd pacman git; do
   command -v "$cmd" >/dev/null
 done
+log "KOVA_CI_STEP cli-tools passed"
 
-# Test the actual live user rather than executing everything as root.
+stage="Tide as kova user"
 runuser -u kova -- fish -c 'type -q tide'
-# Verify interactive Fish defaults and exercise the Rust-backed file tools.
+log "KOVA_CI_STEP tide passed"
+
+stage="interactive Fish Rust defaults"
 runuser -u kova -- env TERM=dumb fish -ic '
   functions -q ls ll la cat cp mv rm mkdir touch sort wc du ps df; or exit 1
   set -l tmp (command mktemp -d)
@@ -52,7 +74,13 @@ runuser -u kova -- env TERM=dumb fish -ic '
   test ! -e $tmp/moved; or exit 1
   command rm -r $tmp
 ' </dev/null
-runuser -u kova -- nvim --headless --clean +qall!
-runuser -u kova -- sudo -n true
+log "KOVA_CI_STEP fish-file-operations passed"
 
-echo "KOVA_CI_PASS"
+stage="Neovim startup"
+runuser -u kova -- nvim --headless --clean +qall!
+log "KOVA_CI_STEP neovim passed"
+
+stage="passwordless sudo as kova"
+# Assert that sudo actually runs as root; no reliance on a silent 'true'.
+test "$(runuser -u kova -- /usr/bin/sudo -n /usr/bin/id -u)" = "0"
+log "KOVA_CI_STEP sudo passed"

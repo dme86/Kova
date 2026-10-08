@@ -53,8 +53,10 @@ while (( SECONDS < DEADLINE )); do
     grep 'KOVA_CI_' "$SERIAL_LOG" | tail -n 25 || true
     exit 0
   fi
-  if grep -q 'KOVA_CI_FAIL' "$SERIAL_LOG"; then
-    echo "Guest smoke test failed. Serial output:" >&2
+  if grep -q 'KOVA_CI_FAIL' "$SERIAL_LOG" ||
+     grep -q 'kova-ci-smoke.service: Failed with result' "$SERIAL_LOG"; then
+    echo "Guest smoke test failed. CI steps and last serial output:" >&2
+    grep -a 'KOVA_CI_' "$SERIAL_LOG" >&2 || true
     tail -n 120 "$SERIAL_LOG" >&2
     exit 1
   fi
