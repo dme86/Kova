@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+# Fast, nonblocking login: fetching occurs in a systemd service only.
+dir=/var/cache/kova
+mkdir -p "$dir"
+tmp=$(mktemp "$dir/.news-XXXXXXXX")
+trap 'rm -f "$tmp"' EXIT
+curl -fLsS --max-time 20 --retry 2 https://archlinux.org/feeds/news/ -o "$tmp"
+grep -q '<rss' "$tmp" && grep -q '<item>' "$tmp" || exit 1
+chmod 0644 "$tmp"
+mv -f "$tmp" "$dir/arch-news.xml"

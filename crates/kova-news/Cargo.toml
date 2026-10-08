@@ -1,0 +1,6 @@
+[package]
+name = "kova-news"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Offline-first, package-aware Arch Linux news for Kova"

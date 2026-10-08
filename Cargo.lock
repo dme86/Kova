@@ -7,8 +7,13 @@ name = "kova-cli"
 version = "0.1.0"
 dependencies = [
  "kova-installer",
+ "kova-news",
 ]
 
 [[package]]
 name = "kova-installer"
+version = "0.1.0"
+
+[[package]]
+name = "kova-news"
 version = "0.1.0"

@@ -25,18 +25,21 @@ Interactive Fish sessions prefer `eza` for `ls`, `bat` for `cat`, `dust` for `du
 
 `grep`, `find`, and `xargs` are Rust binaries from pinned uutils releases, placed in `/usr/local/bin` and checked by SHA256 before inclusion. They are the **default commands across shells**, not merely Fish aliases. Pacman-owned GNU counterparts remain under `/usr/bin` for compatibility while we work toward Rust replacement packages. `rg` and `fd` remain available under their own names for their modern search behavior.
 
-## Kova Rust tools and installer preview
+## Kova Rust tools: Installer and News
 
-The Kova toolchain lives in this repository as a Cargo workspace:
+Kova's Cargo workspace contains two internal Rust crates and one `kova` executable.
 
-- `crates/kova-cli` builds a single user-facing `kova` binary, with the `install` subcommand today and a future `news` subcommand.
-- `crates/kova-installer` contains **read-only** disk discovery, input validation, a fixed GPT/Btrfs/Snapper installation plan and offline unit tests.
+**Installer:** `kova install` previews an installation; `kova install --list-disks` inspects disks; `kova install --dry-run --demo` is a synthetic preview. `kova install --apply` actually wipes the selected disk and installs GPT/UEFI, Btrfs/ZSTD, Snapper + snap-pac, systemd-boot, Fish, greetd and Anvil. It requires a real interactive terminal, a separate `ERASE /dev/...` confirmation and user password entered without echo. The backend re-verifies device identity and refuses mounted or removable targets. **WARNING: this mode irreversibly wipes the selected disk and has not yet been certified by a complete installed-system QEMU/OVMF boot test. Do not try it on valuable physical disks.** No dual boot, LUKS2 or automatic rollback yet.
 
-Run `kova install` inside the live ISO to select a disk, user, hostname, locale, keyboard and timezone and preview the planned installation. Use `kova install --list-disks` for a read-only inventory, or `kova install --dry-run --demo` to inspect a sample layout in CI or without a disk.
+**News:** `kova news` matches cached Arch Linux RSS articles against installed Pacman packages. `kova news read N` acknowledges an article, `kova news --all` shows everything, and `kova news --summary` is displayed at Fish login without network access. A systemd timer refreshes the RSS cache every six hours. Package matching is heuristic: important upstream notices may not mention installed package names, so `--all` remains useful.
 
-**THIS IS NOT YET A FUNCTIONAL DISK INSTALLER.** It cannot create partitions, install packages, modify a disk, set user passwords or configure boot files. There is deliberately no `--apply` flag. Actual installation will be implemented and tested against disposable QEMU virtual disks before any real-disk support is enabled. Dual boot, LUKS2 and complete rollback remain subsequent milestones.
+## Anvil Wayland desktop and wallpaper synchronization
 
-The CI compiles and unit-tests the Rust workspace, transfers the checked binary to the Archiso build, then boots the resulting live ISO in QEMU and executes the CLI planner.
+The default session is [Anvil](https://github.com/dme86/anvil), launched after login with `greetd` and `tuigreet`. The ISO includes pinned, SHA256-verified Anvil v0.3.0 (an all-features release with layer-shell/XWayland); a weekly systemd timer downloads newer **GitHub Releases**, checks their SHA256 file and installs the new binary for the next login.
+
+The [wallpapers](https://github.com/dme86/.wallpapers) are shallow-cloned into the live image for offline first login and copied to installed machines. A daily systemd timer updates the root-owned repository. Anvil's default config under `/etc/skel` starts `swaybg` with one random image at each login; newly created users inherit the same config. `feh` is also installed, but as an X11 viewer it cannot set a Wayland wallpaper.
+
+Anvil DRM/KMS, the greetd session and the destructive installer are still experimental and need hardware and disposable-VM integration testing before a public release.
 
 ## Automatic pacman mirrors
 
@@ -66,7 +69,7 @@ By default, the build tracks the `main` branch. `KOVA_NVIM_REF` selects a differ
 
 Kova ISOs are assembled with `mkarchiso` from the official Archiso `releng` profile and the additions in `config/airootfs/`. The original Arch ISO is not used as a build input.
 
-GitHub Actions runs **checks**, **Rust workspace tests/build**, **ISO build**, and **boot** jobs. The build job uploads a `kova-iso` handoff artifact; that upload alone does not certify the ISO as bootable. The boot job downloads it, re-verifies SHA256, then boots Kova in QEMU and performs live-system checks. On `v*` tags, a final release job runs only after boot verification succeeds. Failed boot tests retain serial console logs.
+GitHub Actions runs **checks**, **Rust workspace tests/build**, **ISO build**, and **boot** jobs. Pull requests execute the same safety checks before merging. The build job uploads a `kova-iso` handoff artifact; that upload alone does not certify the ISO as bootable. The boot job downloads it, re-verifies SHA256, then boots Kova in QEMU and performs live-system checks. On `v*` tags, a final release job runs only after boot verification succeeds. Failed boot tests retain serial console logs.
 
 The CI pipeline checks shell syntax, verifies the ISO checksum, then boots the ISO under QEMU and validates its live user, Fish/Tide, Neovim binary, and CLI tools. GitHub Release publication only occurs after the boot test passes. The `kova-qemu-logs` artifact preserves serial-console output and QEMU diagnostics for debugging failures. GitHub-hosted nested virtualization is experimental; the QEMU runner falls back to TCG if KVM is unavailable.
 
@@ -79,8 +82,11 @@ sudo pacman -Syu --needed archiso curl git
 sudo bash scripts/install-tide.sh config/airootfs
 sudo bash scripts/install-neovim-config.sh
 sudo bash scripts/install-rust-search.sh config/airootfs
+sudo bash scripts/install-anvil.sh config/airootfs
+sudo bash scripts/install-wallpapers.sh config/airootfs
 cargo build --locked --release -p kova-cli
 sudo install -Dm755 target/release/kova config/airootfs/usr/local/bin/kova
+sudo install -Dm755 scripts/install-system.sh config/airootfs/usr/local/lib/kova/install-system
 sudo bash scripts/build.sh
 ```
 
@@ -109,7 +115,7 @@ The smoke-test service starts only in a virtual machine with `/dev/ttyS0`. It ve
 
 Kova's planned opinionated installer uses GPT, a 1 GiB FAT32 ESP, and a Btrfs root filesystem with ZSTD compression. The `@`, `@home`, `@snapshots`, and `@var_log` subvolumes separate OS state, home data, snapshot history, and logs. Snapper and `snap-pac` provide snapshots and snapshots around pacman operations. See [the installer architecture](docs/installer.md) for the layout, initialization sequence and limitations.
 
-**No destructive installer is shipped yet.** The first install path will target an empty dedicated disk. A future dual-boot mode will use already unallocated space and preserve Windows/other OS partitions; see [installer architecture](docs/installer.md) for EFI, BitLocker and rollback constraints. Partitioning and rollback require disposable-VM integration tests before real hardware.
+**The experimental installer now has a destructive --apply mode, but full QEMU install/boot verification remains outstanding.** The first install path will target an empty dedicated disk. A future dual-boot mode will use already unallocated space and preserve Windows/other OS partitions; see [installer architecture](docs/installer.md) for EFI, BitLocker and rollback constraints. Partitioning and rollback require disposable-VM integration tests before real hardware.
 
 ## Kernel updates
 

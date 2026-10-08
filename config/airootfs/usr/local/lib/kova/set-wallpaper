@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+# Called by Anvil's startup list (after the Wayland socket exists).
+wallpapers=/var/lib/kova/wallpapers/files
+[[ -n ${WAYLAND_DISPLAY:-} && -d $wallpapers ]] || exit 0
+picked=$(find "$wallpapers" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) | shuf -n1)
+[[ -n $picked ]] || exit 0
+# This background client requires Anvil's layer-shell feature.
+exec swaybg --image "$picked" --mode fill

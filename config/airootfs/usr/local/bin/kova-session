@@ -1,0 +1,9 @@
+#!/bin/sh
+# Executed only after greetd successfully authenticates the selected user.
+export XDG_SESSION_TYPE=wayland
+export XDG_CURRENT_DESKTOP=Anvil
+export XDG_SESSION_DESKTOP=Anvil
+export QT_QPA_PLATFORM=wayland
+export SDL_VIDEODRIVER=wayland
+export MOZ_ENABLE_WAYLAND=1
+exec /usr/local/bin/anvil
