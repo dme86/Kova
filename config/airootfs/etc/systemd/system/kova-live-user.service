@@ -1,0 +1,12 @@
+[Unit]
+Description=Create ephemeral Kova Live user
+Before=getty@tty1.service
+After=systemd-user-sessions.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/kova/setup-live-user
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

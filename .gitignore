@@ -1,0 +1,7 @@
+out/
+work/
+*.iso
+*.tar.zst
+config/airootfs/etc/fish/functions/tide*.fish
+config/airootfs/etc/fish/conf.d/tide*.fish
+config/airootfs/etc/fish/completions/tide*.fish

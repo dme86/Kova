@@ -1,0 +1,41 @@
+name: Build Kova ISO
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ISO using Arch Linux toolchain
+        run: |
+          docker run --rm --privileged \
+            -v "$PWD:/repo" -w /repo \
+            archlinux:latest bash -euc '
+              pacman -Syu --noconfirm --needed archiso curl git
+              bash scripts/install-tide.sh config/airootfs
+              bash scripts/install-neovim-config.sh
+              bash scripts/build.sh
+            '
+      - name: Validate outputs
+        run: |
+          test -n "$(find out -maxdepth 1 -name '*.iso' -print -quit)"
+          (cd out && sha256sum -c SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kova-iso
+          path: out/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Publish tagged release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" out/*.iso out/SHA256SUMS \
+            --generate-notes --title "Kova Linux $GITHUB_REF_NAME"

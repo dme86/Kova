@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+if ! id kova >/dev/null 2>&1; then
+  useradd -m -s /usr/bin/fish -G wheel,video,audio,storage -U kova
+fi
+passwd -l kova >/dev/null
+install -d -m 0750 /etc/sudoers.d
+printf 'kova ALL=(ALL:ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-kova-live
+chmod 0440 /etc/sudoers.d/90-kova-live
+# For LIVE media only: do not copy these rules to an installed system.
