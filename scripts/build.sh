@@ -46,7 +46,10 @@ pipewire-alsa
 pipewire-pulse
 wireplumber
 brightnessctl
-foot
+alacritty
+ttf-jetbrains-mono
+ttf-nerd-fonts-symbols-mono
+adwaita-icon-theme
 xorg-xwayland
 wl-clipboard
 zram-generator

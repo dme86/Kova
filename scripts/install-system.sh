@@ -77,7 +77,7 @@ pacstrap -K "$target" \
   sudo fish git curl jq rate-mirrors neovim networkmanager \
   eza bat fd ripgrep bottom dust procs dysk sd uutils-coreutils \
   zoxide fzf tmux starship wayland mesa libinput seatd \
-  greetd greetd-tuigreet swaybg mako libnotify pipewire pipewire-alsa pipewire-pulse wireplumber brightnessctl foot xorg-xwayland wl-clipboard \
+  greetd greetd-tuigreet swaybg mako libnotify pipewire pipewire-alsa pipewire-pulse wireplumber brightnessctl alacritty ttf-jetbrains-mono ttf-nerd-fonts-symbols-mono adwaita-icon-theme xorg-xwayland wl-clipboard \
   zram-generator dosfstools efibootmgr
 # Snapper create-config requires .snapshots to be unmounted.
 arch-chroot "$target" snapper -c root create-config /
@@ -104,6 +104,7 @@ for name in kova-mirrors kova-news kova-update-anvil kova-update-wallpapers; do
   install -Dm644 "/etc/systemd/system/$name.timer" "$target/etc/systemd/system/$name.timer"
 done
 install -Dm644 /etc/greetd/config.toml "$target/etc/greetd/config.toml"
+install -Dm644 /etc/fonts/conf.d/70-kova-monospace.conf "$target/etc/fonts/conf.d/70-kova-monospace.conf"
 install -Dm644 /etc/os-release "$target/etc/os-release"
 install -Dm644 /etc/issue "$target/etc/issue"
 install -Dm644 /usr/local/share/kova/anvil-version "$target/usr/local/share/kova/anvil-version"

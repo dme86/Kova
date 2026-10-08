@@ -27,6 +27,18 @@ jobs:
         run: bash tests/test-osd.sh
       - name: Test mirror updater without network
         run: bash tests/test-mirrors.sh
+      - name: Validate Kova font and terminal settings
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import tomllib
+          from xml.etree import ElementTree
+          root = pathlib.Path("config/airootfs")
+          terminal = tomllib.loads((root / "etc/skel/.config/alacritty/alacritty.toml").read_text())
+          assert terminal["font"]["normal"]["family"] == "JetBrains Mono"
+          ElementTree.parse(root / "etc/fonts/conf.d/70-kova-monospace.conf")
+          print("Fontconfig XML and Alacritty TOML validated")
+          PY
       - name: Validate Fish configuration
         run: |
           sudo apt-get update -qq

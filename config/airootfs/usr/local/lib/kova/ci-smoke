@@ -68,6 +68,17 @@ test -x /usr/local/bin/kova-session
 test -f /etc/greetd/config.toml
 test -f /etc/skel/.config/anvil/config.toml
 test -f /etc/skel/.config/mako/config
+test -f /etc/skel/.config/alacritty/alacritty.toml
+test -f /etc/fonts/conf.d/70-kova-monospace.conf
+for pkg in alacritty ttf-jetbrains-mono ttf-nerd-fonts-symbols-mono adwaita-icon-theme; do
+  pacman -Q "$pkg" >/dev/null
+done
+command -v alacritty >/dev/null
+fc-match -f '%{family}\n' monospace | /usr/bin/grep -Fq 'JetBrains Mono'
+test -f /usr/share/icons/Adwaita/symbolic/status/audio-volume-muted-symbolic.svg
+/usr/bin/grep -Fqx 'terminal = "alacritty"' /etc/skel/.config/anvil/config.toml
+/usr/bin/grep -Fqx 'volume_up = "kova-osd volume up"' /etc/skel/.config/anvil/config.toml
+/usr/bin/grep -Fqx 'brightness_down = "kova-osd brightness down"' /etc/skel/.config/anvil/config.toml
 test -x /usr/local/bin/kova-osd
 /usr/local/bin/kova-osd --help | /usr/bin/grep -q 'kova-osd volume'
 /usr/bin/grep -q '"mako"' /etc/skel/.config/anvil/config.toml

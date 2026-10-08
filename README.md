@@ -35,11 +35,28 @@ Kova's Cargo workspace contains two internal Rust crates and one `kova` executab
 
 ## Anvil Wayland desktop and wallpaper synchronization
 
-The default session is [Anvil](https://github.com/dme86/anvil), launched after login with `greetd` and `tuigreet`. The ISO includes pinned, SHA256-verified Anvil v0.3.0 (an all-features release with layer-shell/XWayland); a weekly systemd timer downloads newer **GitHub Releases**, checks their SHA256 file and installs the new binary for the next login.
+The default session is [Anvil](https://github.com/dme86/anvil), launched after login with `greetd` and `tuigreet`. The ISO includes pinned, SHA256-verified Anvil v3.0.1 (an all-features release with layer-shell/XWayland); a weekly systemd timer downloads newer **GitHub Releases**, checks their SHA256 file and installs the new binary for the next login.
 
 The [wallpapers](https://github.com/dme86/.wallpapers) are shallow-cloned into the live image for offline first login and copied to installed machines. A daily systemd timer updates the root-owned repository. Anvil's default config under `/etc/skel` starts `swaybg` with one random image at each login; newly created users inherit the same config. Kova deliberately does not include `feh`: `swaybg` handles wallpapers natively on Wayland.
 
 Anvil DRM/KMS, the greetd session and the destructive installer are still experimental and need hardware and disposable-VM integration testing before a public release.
+
+## Kova default typography and terminal
+
+**Alacritty** is Kova's default Wayland terminal, launched by Anvil's
+Super+Return binding, with a minimal dark Kova theme under
+`/etc/skel/.config/alacritty/alacritty.toml`. It is written in Rust,
+GPU-accelerated and replaces the former `foot` default.
+
+The default font is **JetBrains Mono** with **Nerd Fonts Symbols Mono** as
+fallback (both provided by official Arch packages). Fontconfig sets the
+system's `monospace` alias accordingly, so terminal prompts and future
+status-bar glyphs render consistently. **Adwaita icons** supply the image
+icons used by mako for sound and brightness notifications. New user accounts
+inherit Alacritty and Mako config via `/etc/skel`.
+
+Kova now pins **Anvil v3.0.1** and enables native XF86 volume/brightness
+shortcuts mapped to `kova-osd` in the default Anvil configuration.
 
 ## Kova notifications and media controls
 
@@ -62,11 +79,10 @@ buttons are pressed repeatedly. The dark themed config lives in
 `/etc/skel/.config/mako/config` and is inherited by new accounts. Anvil
 starts mako automatically on login.
 
-**Hardware volume/brightness keybindings are not wired up yet.** Anvil
-v0.3.0 does not intercept the `XF86Audio*` / `XF86MonBrightness*` keys;
-the compositor itself needs native configurable media shortcuts. Until that
-Anvil release, the helper works manually or from another keybinding tool.
-See [the roadmap](docs/roadmap.md).
+**Hardware volume/brightness keybindings are enabled by default.** Kova uses
+Anvil v3.0.1 with its new `[media]` mappings to `kova-osd`. Physical
+hardware-key behavior still needs on-device validation.
+See [the roadmap](docs/roadmap.md) for follow-up testing.
 
 **Planned:** Anvil releases should become an ordinary versioned, signed
 Pacman package so `pacman -Syu` can notify users and install updates,

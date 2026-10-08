@@ -19,20 +19,17 @@ than being silently downloaded by a separate root-owned updater.
 **Status:** not implemented. Current Anvil updates use GitHub Releases and
 SHA256 checksum verification.
 
-## Native multimedia shortcuts in Anvil — planned upstream
+## Native multimedia shortcuts — implemented, hardware validation pending
 
-Kova ships `mako`, `libnotify`, PipeWire/WirePlumber, `brightnessctl`
-and `kova-osd`. The helper changes sound/backlight levels and displays a
-brief notification at the upper right:
-`kova-osd volume up|down|mute`, `kova-osd brightness up|down`.
+Kova includes `mako`, `libnotify`, PipeWire/WirePlumber, `brightnessctl`
+and `kova-osd`. Anvil v3.0.1 adds configurable unmodified XF86 media keys;
+Kova wires volume up/down/mute and brightness up/down to `kova-osd`.
+System font/icon defaults include JetBrains Mono, Nerd Fonts Symbols Mono,
+and Adwaita icons. The native session launches Alacritty by default.
 
-Anvil v0.3.0 does not support user-definable media-key bindings. Implement
-configurable bindings in the Anvil compositor for `XF86AudioRaiseVolume`,
-`XF86AudioLowerVolume`, `XF86AudioMute`, `XF86MonBrightnessUp` and
-`XF86MonBrightnessDown`; map them to `kova-osd`. This avoids a privileged
-keylogger-style libinput listener. Release and test new Anvil before Kova
-claims hardware shortcut support. Until then, the OSD helper works when
-called explicitly; hardware media keys are NOT hooked up.
+Still to validate on physical laptops/keyboards: actual XF86 keysyms,
+PipeWire default sink detection, desktop-user backlight permissions, and
+mako popups with matching theme/icons.
 
 ## Destructive installer verification
 

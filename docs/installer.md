@@ -162,7 +162,7 @@ support. This is not part of the initial release.
 ## Kova desktop and news integration
 
 The installed system ships greetd + tuigreet (TTY login) and executes
-`kova-session` to start Anvil on Wayland. Anvil v0.3.0 is pinned
+`kova-session` to start Anvil on Wayland. Anvil v3.0.1 is pinned
 at ISO build time by SHA256. `feh` is intentionally omitted; `swaybg` drives backgrounds via
 Anvil's layer-shell feature. Users inherit an Anvil startup config
 from `/etc/skel`; one wallpaper is randomly selected on every login.
@@ -188,6 +188,18 @@ blue-accented, top-right overlay. Standard `notify-send` comes from
 `libnotify`. PipeWire + WirePlumber provide `wpctl`; `brightnessctl`
 modifies supported hardware backlights. `kova-osd` changes each setting
 and notifies via D-Bus with a short, replaceable progress popup.
-Anvil multimedia shortcuts remain a separate upstream milestone because
-Anvil v0.3.0 does not yet handle XF86 media keys. No privileged global
-keyboard event listener is installed. See `docs/roadmap.md`.
+Anvil v3.0.1 intercepts the five XF86 volume/brightness keys and
+executes the configured `kova-osd` commands without a privileged global
+keyboard event listener. Physical input-device validation is still required.
+See `docs/roadmap.md`.
+
+## Default terminal, font and icons
+
+The live environment and installed system both install `alacritty`,
+`ttf-jetbrains-mono`, `ttf-nerd-fonts-symbols-mono` and
+`adwaita-icon-theme`. Anvil v3.0.1 launches Alacritty via Super+Return
+and enables XF86 volume and brightness shortcuts to `kova-osd`.
+The system Fontconfig default is JetBrains Mono with Nerd Font fallback.
+Mako uses Adwaita audio/brightness icons and JetBrains Mono.
+All new accounts inherit default Alacritty/Mako/Anvil configs from
+`/etc/skel`; Fontconfig settings apply system-wide.

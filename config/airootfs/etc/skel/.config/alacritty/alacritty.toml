@@ -1,0 +1,42 @@
+# Kova Linux default terminal — Alacritty
+# JetBrains Mono text with Nerd Font Symbols Mono as the fontconfig fallback.
+
+[window]
+padding = { x = 10, y = 8 }
+dynamic_padding = true
+decorations = "None"
+opacity = 0.98
+
+[font]
+size = 11.5
+
+[font.normal]
+family = "JetBrains Mono"
+style = "Regular"
+
+[font.bold]
+family = "JetBrains Mono"
+style = "Bold"
+
+[font.italic]
+family = "JetBrains Mono"
+style = "Italic"
+
+[colors.primary]
+background = "#191c26"
+foreground = "#e2e8f0"
+
+[colors.cursor]
+cursor = "#7aa2f7"
+text = "#191c26"
+
+[colors.selection]
+background = "#34445e"
+text = "#e2e8f0"
+
+[scrolling]
+history = 10000
+
+[cursor.style]
+shape = "Block"
+blinking = "Off"
