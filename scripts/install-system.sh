@@ -27,8 +27,7 @@ bytes=$(lsblk -bdn -o SIZE -- "$disk" | tr -d '[:space:]')
 if lsblk -nr -o MOUNTPOINTS -- "$disk" | grep -q '[^[:space:]]'; then
   echo "Target or child partition is mounted; refusing to erase" >&2; exit 1
 fi
-if lsblk -nr -o FSTYPE -- "$disk" | grep -Eq '^(iso9660|squashfs)
-  echo "Target contains the live installation medium" >&2; exit 1
+if lsblk -nr -o FSTYPE -- "$disk" | grep -Eq '^(iso9660|squashfs)  echo "Target contains the live installation medium" >&2; exit 1
 fi
 [[ $token == "ERASE:$majmin" ]] || { echo "Missing device-specific erase confirmation" >&2; exit 1; }
 IFS= read -r -s password || { echo "Password missing" >&2; exit 1; }
