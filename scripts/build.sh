@@ -47,6 +47,14 @@ SYSLINUX_CFG="$PROFILE/syslinux/archiso_sys-linux.cfg"
 [[ -f "$SYSLINUX_CFG" ]] || { echo "Missing Archiso BIOS boot entry: $SYSLINUX_CFG" >&2; exit 1; }
 sed -i -E '/^APPEND /s|$| console=ttyS0,115200n8 console=tty0 loglevel=6 systemd.log_level=info systemd.log_target=kmsg|' "$SYSLINUX_CFG"
 grep -q 'console=ttyS0,115200n8' "$SYSLINUX_CFG"
+# Archiso copies custom airootfs files without their original file modes.
+# Explicitly restore executable permissions for our live-system scripts.
+# Missing these entries causes kova-live-user.service to fail with 203/EXEC.
+cat >> "$PROFILE/profiledef.sh" <<'KOVA_PERMISSIONS'
+file_permissions["/usr/local/lib/kova/setup-live-user"]="0:0:755"
+file_permissions["/usr/local/lib/kova/ci-smoke"]="0:0:755"
+KOVA_PERMISSIONS
+
 # ISO name/branding; keep upstream bootstrap and bootloader configurations unchanged.
 # Live networking follows the official releng configuration.
 mkdir -p "$ROOT/out"

@@ -1,6 +1,5 @@
 [Unit]
 Description=Kova live ISO QEMU smoke test
-Requires=kova-live-user.service
 After=kova-live-user.service
 ConditionVirtualization=vm
 ConditionPathExists=/dev/ttyS0
