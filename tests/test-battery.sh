@@ -27,6 +27,11 @@ battery() {
   printf '%s\n' "$3" > "$dir/status"
 }
 run; expect 0
+# A headless root/systemd service may not define HOME or XDG_STATE_HOME.
+# That must not break a machine with no battery.
+env -u HOME -u XDG_STATE_HOME -u KOVA_BATTERY_STATE_ROOT \
+  KOVA_POWER_SUPPLY_ROOT="$tmp/no-such-supply" bash "$script"
+expect 0
 battery BAT0 40 Discharging
 run; expect 0
 battery BAT0 20 Discharging

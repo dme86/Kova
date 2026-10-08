@@ -94,13 +94,22 @@ test -n "$(find /var/lib/kova/wallpapers/files -type f -name '*.png' -print -qui
 log "KOVA_CI_STEP installer-preview passed"
 
 stage="battery notifications"
-test -x /usr/local/lib/kova/check-battery
-test -f /usr/lib/systemd/user/kova-battery.service
-test -f /usr/lib/systemd/user/kova-battery.timer
-test -L /etc/systemd/user/timers.target.wants/kova-battery.timer
-test -r /etc/systemd/user/timers.target.wants/kova-battery.timer
-# Live QEMU usually has no battery; the service must succeed without one.
-/usr/local/lib/kova/check-battery
+battery_assert() {
+  local message=$1
+  shift
+  if ! "$@"; then
+    log "KOVA_CI_DIAG battery: $message"
+    return 1
+  fi
+}
+battery_assert "checker missing or not executable" test -x /usr/local/lib/kova/check-battery
+battery_assert "user service not packaged" test -f /usr/lib/systemd/user/kova-battery.service
+battery_assert "user timer not packaged" test -f /usr/lib/systemd/user/kova-battery.timer
+battery_assert "global timer symlink missing" test -L /etc/systemd/user/timers.target.wants/kova-battery.timer
+battery_assert "global timer symlink broken" test -r /etc/systemd/user/timers.target.wants/kova-battery.timer
+# Smoke-test with HOME explicitly absent: unlike login sessions, system services
+# may not export it. QEMU is expected to have no battery.
+battery_assert "battery checker failed without HOME" env -u HOME -u XDG_STATE_HOME -u KOVA_BATTERY_STATE_ROOT /usr/local/lib/kova/check-battery
 log "KOVA_CI_STEP battery-notifications passed"
 
 stage="available CLI tools"

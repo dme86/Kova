@@ -20,7 +20,13 @@ ln -s ../kova-mirrors.timer "$PROFILE/airootfs/etc/systemd/system/timers.target.
 ln -s ../kova-news.timer "$PROFILE/airootfs/etc/systemd/system/timers.target.wants/kova-news.timer"
 # Global user-timer enablement applies to the live user and future accounts.
 mkdir -p "$PROFILE/airootfs/etc/systemd/user/timers.target.wants"
-ln -s /usr/lib/systemd/user/kova-battery.timer "$PROFILE/airootfs/etc/systemd/user/timers.target.wants/kova-battery.timer"
+# Use a rootfs-relative link, not an absolute host path that becomes broken
+# while Archiso copies the profile into its staging root.
+ln -s ../../../../usr/lib/systemd/user/kova-battery.timer "$PROFILE/airootfs/etc/systemd/user/timers.target.wants/kova-battery.timer"
+test -r "$PROFILE/airootfs/etc/systemd/user/timers.target.wants/kova-battery.timer" || {
+  echo "Kova battery user timer symlink is broken in the Archiso profile" >&2
+  exit 1
+}
 cat >> "$PROFILE/packages.x86_64" <<'PKGS'
 fish
 neovim

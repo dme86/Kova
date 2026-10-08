@@ -2,7 +2,9 @@
 set -Eeuo pipefail
 # Read battery data as the logged-in user; no acpid or root daemon needed.
 supply_root=${KOVA_POWER_SUPPLY_ROOT:-/sys/class/power_supply}
-state_root=${KOVA_BATTERY_STATE_ROOT:-${XDG_STATE_HOME:-$HOME/.local/state}/kova}
+# systemd's system-level QEMU smoke service may have no HOME. Real user
+# sessions provide HOME; the fallback prevents nounset errors on headless VMs.
+state_root=${KOVA_BATTERY_STATE_ROOT:-${XDG_STATE_HOME:-${HOME:-/var/empty}/.local/state}/kova}
 notify=${KOVA_NOTIFY_SEND:-notify-send}
 state_file="$state_root/battery-warning"
 
