@@ -6,6 +6,10 @@ WORK=${KOVA_WORK:-/tmp/kova-archiso-work}
 PROFILE=$(mktemp -d /tmp/kova-profile.XXXXXX)
 trap 'rm -rf "$PROFILE"' EXIT
 cp -a /usr/share/archiso/configs/releng/. "$PROFILE/"
+[[ -x "$ROOT/config/airootfs/usr/local/bin/kova" ]] || {
+  echo "Missing Kova Rust binary; run cargo build --release -p kova-cli and stage target/release/kova first" >&2
+  exit 1
+}
 cp -a "$ROOT/config/airootfs/." "$PROFILE/airootfs/"
 # Enable live user provisioning and serial smoke testing in the live image.
 mkdir -p "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants"
@@ -63,6 +67,7 @@ cat >> "$PROFILE/profiledef.sh" <<'KOVA_PERMISSIONS'
 file_permissions["/usr/local/lib/kova/setup-live-user"]="0:0:755"
 file_permissions["/usr/local/lib/kova/ci-smoke"]="0:0:755"
 file_permissions["/usr/local/lib/kova/update-mirrors"]="0:0:755"
+file_permissions["/usr/local/bin/kova"]="0:0:755"
 # The three default Rust search commands are installed into /usr/local/bin.
 file_permissions["/usr/local/bin/grep"]="0:0:755"
 file_permissions["/usr/local/bin/find"]="0:0:755"

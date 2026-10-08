@@ -31,13 +31,46 @@ jobs:
             fish -n "$file"
           done
 
+  rust:
+    name: Rust workspace tests and binary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Rust toolchain
+        run: |
+          cargo --version
+          rustc --version
+      - name: Test installer planning
+        run: cargo test --locked --workspace
+      - name: Build Kova CLI
+        run: |
+          cargo build --locked --release --package kova-cli
+          target/release/kova --help
+          target/release/kova install --dry-run --demo | grep -q 'NO PARTITIONS OR FILES WERE MODIFIED'
+      - name: Publish binary for ISO build
+        uses: actions/upload-artifact@v4
+        with:
+          name: kova-cli-binary
+          path: target/release/kova
+          if-no-files-found: error
+          retention-days: 7
+
   build:
     name: Build Archiso
-    needs: checks
+    needs: [checks, rust]
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
+      - name: Retrieve tested Kova CLI
+        uses: actions/download-artifact@v4
+        with:
+          name: kova-cli-binary
+          path: kova-binary
+      - name: Stage Kova CLI in the ISO root filesystem
+        run: |
+          install -Dm755 kova-binary/kova config/airootfs/usr/local/bin/kova
       - name: Build ISO using Arch Linux toolchain
         run: |
           docker run --rm --privileged \

@@ -1,10 +1,20 @@
-# Kova installer architecture (design; not implemented)
+# Kova installer architecture
+
+**Current state:** A read-only Rust installer planner exists in the Cargo
+workspace. `kova install` interactively discovers disks and previews an
+installation; `kova install --dry-run --demo` shows a completely synthetic
+layout. There are **no disk-writing code paths** yet. All on-disk
+installation steps described below remain a design until tested in QEMU.
 
 Kova is opinionated about the installed Linux system, **not** about
 destroying an existing operating system. The first implementation will
 support installation to an empty, dedicated disk; shared-disk dual boot is
 a later, separately tested installer mode.
-Use a small native Rust TUI called `kova install` (ratatui + crossterm),
+The first milestone ships a dependency-light Rust terminal wizard called
+`kova install` for disk discovery, validation and a dry-run preview.
+Upgrade that wizard to a ratatui/crossterm interface after we have a
+tested real installation backend. Do not claim the preview installs Linux.
+The eventual installer uses a small native Rust TUI,
 not the Python archinstall or desktop-focused Calamares. The Rust frontend
 invokes tested Arch tools (`sgdisk`, `mkfs`, `pacstrap`, `genfstab`,
 `arch-chroot`, `bootctl`) for the actual disk and system operations.
@@ -18,8 +28,9 @@ NTP is automatic via systemd-timesyncd; no time-sync choice is necessary.
 Btrfs, GPT, ZSTD, subvolume layout, Snapper and systemd-boot are fixed Kova
 defaults, not user-facing filesystem/bootloader menus.
 
-The installer is not yet implemented, and no command capable of formatting
-real disks should be shipped until disposable-VM end-to-end tests pass.
+The read-only planner is implemented and unit-tested; no command capable
+of formatting real disks is shipped until disposable-VM end-to-end tests pass.
+The planner never asks for a password because no user is created yet.
 
 ## Installation modes and dual boot
 
@@ -111,9 +122,12 @@ Do not advertise bootable automatic rollbacks before a complete VM test.
 
 - **M1 (now):** specify partition layout, boot mode, configuration and
   dependency lifecycle; keep the destructive installer disabled.
-- **M2:** develop a non-interactive Rust installer with a `--dry-run` plan;
-  validate block-device identity and reject the running system disk. Require
-  a typed confirmation naming the target device before any disk write.
+- **M2 (read-only planner):** Cargo workspace, safe disk discovery and
+  validation, interactive CLI and `--dry-run` preview. The current planner
+  excludes mounted or read-only devices but **does not yet have robust
+  live-install-medium identification**.
+- **M2b:** add stable block-device identity, live-media exclusion and
+  a typed confirmation before any write. Implement a true Rust TUI.
 - **M3:** implement actual partitioning, mounting, pacstrap, users, fstab,
   mkinitcpio, UEFI bootloader, Snapper and pacman hooks; only on an attached
   **disposable QEMU virtual disk** in CI.

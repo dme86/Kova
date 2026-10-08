@@ -1,0 +1,6 @@
+[package]
+name = "kova-installer"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Non-destructive storage discovery and installation planner for Kova Linux"

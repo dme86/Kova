@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/kova-cli", "crates/kova-installer"]
+resolver = "2"

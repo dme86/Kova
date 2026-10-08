@@ -57,8 +57,14 @@ test -x /usr/local/lib/kova/update-mirrors
 systemctl is-enabled --quiet kova-mirrors.timer
 log "KOVA_CI_STEP mirrors passed"
 
+stage="Rust Kova installer preview"
+test -x /usr/local/bin/kova
+/usr/local/bin/kova install --dry-run --demo | /usr/bin/grep -q 'NO PARTITIONS OR FILES WERE MODIFIED'
+/usr/local/bin/kova install --list-disks >/dev/null
+log "KOVA_CI_STEP installer-preview passed"
+
 stage="available CLI tools"
-for cmd in fish nvim rg fd eza btm dust procs dysk sd pacman git; do
+for cmd in kova fish nvim rg fd eza btm dust procs dysk sd pacman git; do
   command -v "$cmd" >/dev/null
 done
 log "KOVA_CI_STEP cli-tools passed"

@@ -25,6 +25,19 @@ Interactive Fish sessions prefer `eza` for `ls`, `bat` for `cat`, `dust` for `du
 
 `grep`, `find`, and `xargs` are Rust binaries from pinned uutils releases, placed in `/usr/local/bin` and checked by SHA256 before inclusion. They are the **default commands across shells**, not merely Fish aliases. Pacman-owned GNU counterparts remain under `/usr/bin` for compatibility while we work toward Rust replacement packages. `rg` and `fd` remain available under their own names for their modern search behavior.
 
+## Kova Rust tools and installer preview
+
+The Kova toolchain lives in this repository as a Cargo workspace:
+
+- `crates/kova-cli` builds a single user-facing `kova` binary, with the `install` subcommand today and a future `news` subcommand.
+- `crates/kova-installer` contains **read-only** disk discovery, input validation, a fixed GPT/Btrfs/Snapper installation plan and offline unit tests.
+
+Run `kova install` inside the live ISO to select a disk, user, hostname, locale, keyboard and timezone and preview the planned installation. Use `kova install --list-disks` for a read-only inventory, or `kova install --dry-run --demo` to inspect a sample layout in CI or without a disk.
+
+**THIS IS NOT YET A FUNCTIONAL DISK INSTALLER.** It cannot create partitions, install packages, modify a disk, set user passwords or configure boot files. There is deliberately no `--apply` flag. Actual installation will be implemented and tested against disposable QEMU virtual disks before any real-disk support is enabled. Dual boot, LUKS2 and complete rollback remain subsequent milestones.
+
+The CI compiles and unit-tests the Rust workspace, transfers the checked binary to the Archiso build, then boots the resulting live ISO in QEMU and executes the CLI planner.
+
 ## Automatic pacman mirrors
 
 Kova includes [rate-mirrors](https://github.com/westandskif/rate-mirrors), a Rust utility from Arch's official `extra` repository. A systemd timer schedules a first refresh after boot and a weekly refresh, with a 7-day timestamp preventing redundant benchmarks. Only currently synchronized HTTPS mirrors are considered. The new mirrorlist is checked before it atomically replaces the previous version. The last list is backed up at `/etc/pacman.d/mirrorlist.kova-previous`; if mirror ranking fails, the current list stays intact.
@@ -53,7 +66,7 @@ By default, the build tracks the `main` branch. `KOVA_NVIM_REF` selects a differ
 
 Kova ISOs are assembled with `mkarchiso` from the official Archiso `releng` profile and the additions in `config/airootfs/`. The original Arch ISO is not used as a build input.
 
-GitHub Actions runs independent **checks**, **build**, and **boot** jobs. The build job uploads a `kova-iso` handoff artifact; that upload alone does not certify the ISO as bootable. The boot job downloads it, re-verifies SHA256, then boots Kova in QEMU and performs live-system checks. On `v*` tags, a final release job runs only after boot verification succeeds. Failed boot tests retain serial console logs.
+GitHub Actions runs **checks**, **Rust workspace tests/build**, **ISO build**, and **boot** jobs. The build job uploads a `kova-iso` handoff artifact; that upload alone does not certify the ISO as bootable. The boot job downloads it, re-verifies SHA256, then boots Kova in QEMU and performs live-system checks. On `v*` tags, a final release job runs only after boot verification succeeds. Failed boot tests retain serial console logs.
 
 The CI pipeline checks shell syntax, verifies the ISO checksum, then boots the ISO under QEMU and validates its live user, Fish/Tide, Neovim binary, and CLI tools. GitHub Release publication only occurs after the boot test passes. The `kova-qemu-logs` artifact preserves serial-console output and QEMU diagnostics for debugging failures. GitHub-hosted nested virtualization is experimental; the QEMU runner falls back to TCG if KVM is unavailable.
 
@@ -66,6 +79,8 @@ sudo pacman -Syu --needed archiso curl git
 sudo bash scripts/install-tide.sh config/airootfs
 sudo bash scripts/install-neovim-config.sh
 sudo bash scripts/install-rust-search.sh config/airootfs
+cargo build --locked --release -p kova-cli
+sudo install -Dm755 target/release/kova config/airootfs/usr/local/bin/kova
 sudo bash scripts/build.sh
 ```
 

@@ -1,0 +1,13 @@
+[package]
+name = "kova-cli"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Kova Linux command line entrypoint"
+
+[dependencies]
+kova-installer = { path = "../kova-installer" }
+
+[[bin]]
+name = "kova"
+path = "src/main.rs"
