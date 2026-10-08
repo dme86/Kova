@@ -82,6 +82,9 @@ jobs:
               bash scripts/install-tide.sh config/airootfs
               bash scripts/install-neovim-config.sh
               bash scripts/install-rust-search.sh config/airootfs
+              bash scripts/install-anvil.sh config/airootfs
+              bash scripts/install-wallpapers.sh config/airootfs
+              install -Dm755 scripts/install-system.sh config/airootfs/usr/local/lib/kova/install-system
               bash scripts/build.sh
             '
       - name: Validate outputs
