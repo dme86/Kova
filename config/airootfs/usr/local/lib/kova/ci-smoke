@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# This runs only in a VM with a serial port. The CI runner reads the
+# unambiguous PASS/FAIL markers directly from QEMU's serial output.
+exec > /dev/ttyS0 2>&1
+trap 'result=$?; echo "KOVA_CI_FAIL (exit $result, line $LINENO): $BASH_COMMAND"; exit "$result"' ERR
+
+echo "KOVA_CI_BEGIN"
+
+test "$(cat /etc/hostname)" = "kova"
+test "$(getent passwd kova | cut -d: -f7)" = "/usr/bin/fish"
+test -f /home/kova/.config/nvim/init.lua
+test -f /home/kova/.config/nvim/lazy-lock.json
+id -nG kova | tr ' ' '\n' | grep -qx wheel
+
+for cmd in fish nvim rg fd eza btm pacman git; do
+  command -v "$cmd" >/dev/null
+done
+
+# Test the actual live user rather than executing everything as root.
+runuser -u kova -- fish -c 'type -q tide'
+runuser -u kova -- nvim --headless --clean +qall!
+runuser -u kova -- sudo -n true
+
+echo "KOVA_CI_PASS"

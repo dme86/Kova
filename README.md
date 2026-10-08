@@ -6,7 +6,7 @@
 
 Kova is a minimal, Arch-based Linux live environment with a Rust-friendly command-line toolset. It uses the official Archiso `releng` profile as its foundation and adds its own shell, editor configuration, and system defaults.
 
-> **Status:** Experimental. The ISO build and boot process have not yet been validated end to end.
+> **Status:** Experimental. ISOs are built and boot-tested in QEMU on GitHub Actions; physical hardware and UEFI boot are not yet covered.
 
 ## Included
 
@@ -21,7 +21,7 @@ The Rust utilities complement the standard system commands. GNU Coreutils remain
 
 ## Live environment
 
-The live system automatically logs in as `kova` on `tty1`, using Fish. The account is created during boot, with its password locked and passwordless `sudo` enabled for the live session.
+The live system uses the hostname `kova` and automatically logs in as `kova` on `tty1`, using Fish. The account is created during boot, with its password locked and passwordless `sudo` enabled for the live session.
 
 These permissions apply **only to the disposable live environment**. A persistent installation requires its own user provisioning and authentication policy.
 
@@ -41,7 +41,7 @@ Kova ISOs are assembled with `mkarchiso` from the official Archiso `releng` prof
 
 The GitHub Actions workflow builds on pushes to `main`, on version tags matching `v*`, or when dispatched manually. Successful builds produce a `kova-iso` artifact containing the ISO and `SHA256SUMS`. Version tags also create a GitHub Release.
 
-The workflow currently verifies that an ISO was produced and that its checksum matches. Automated boot testing is not implemented yet.
+The CI pipeline checks shell syntax, verifies the ISO checksum, then boots the ISO under QEMU and validates its live user, Fish/Tide, Neovim binary, and CLI tools. ISO publication only occurs after the boot test passes. The `kova-qemu-logs` artifact preserves serial-console output and QEMU diagnostics for debugging failures. GitHub-hosted nested virtualization is experimental; the QEMU runner falls back to TCG if KVM is unavailable.
 
 ### Local build
 
@@ -67,7 +67,13 @@ sudo pacman -S --needed qemu-desktop edk2-ovmf
 run_archiso -i out/kova-*.iso
 ```
 
-Expected live-system behavior includes an automatic `kova` login on `tty1` and working `fish`, `nvim`, `btm`, and Tide commands. Until boot testing is automated, an ISO build alone does not establish that the image is bootable.
+For automated serial-console testing with QEMU installed:
+
+```sh
+bash scripts/test-iso.sh
+```
+
+The smoke-test service starts only in a virtual machine with `/dev/ttyS0`. It reports `KOVA_CI_PASS` or `KOVA_CI_FAIL` over the serial port. CI currently covers BIOS boot; UEFI, the graphical environment and a persistent installation require separate tests.
 
 ## Upstream
 

@@ -7,9 +7,10 @@ PROFILE=$(mktemp -d /tmp/kova-profile.XXXXXX)
 trap 'rm -rf "$PROFILE"' EXIT
 cp -a /usr/share/archiso/configs/releng/. "$PROFILE/"
 cp -a "$ROOT/config/airootfs/." "$PROFILE/airootfs/"
-# Enable the first-boot user provisioning service in the live image.
+# Enable live user provisioning and serial smoke testing in the live image.
 mkdir -p "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants"
 ln -s ../kova-live-user.service "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants/kova-live-user.service"
+ln -s ../kova-ci-smoke.service "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants/kova-ci-smoke.service"
 cat >> "$PROFILE/packages.x86_64" <<'PKGS'
 fish
 neovim

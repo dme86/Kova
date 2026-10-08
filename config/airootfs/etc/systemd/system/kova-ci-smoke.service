@@ -1,0 +1,14 @@
+[Unit]
+Description=Kova live ISO QEMU smoke test
+Requires=kova-live-user.service
+After=kova-live-user.service
+ConditionVirtualization=vm
+ConditionPathExists=/dev/ttyS0
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/kova/ci-smoke
+TimeoutStartSec=90
+
+[Install]
+WantedBy=multi-user.target
