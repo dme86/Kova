@@ -1,0 +1,7 @@
+# Kova Linux system-wide defaults; users may override in ~/.config/mimeapps.list.
+[Default Applications]
+x-scheme-handler/http=librewolf.desktop;
+x-scheme-handler/https=librewolf.desktop;
+x-scheme-handler/about=librewolf.desktop;
+text/html=librewolf.desktop;
+application/xhtml+xml=librewolf.desktop;

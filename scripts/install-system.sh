@@ -77,7 +77,7 @@ pacstrap -K "$target" \
   sudo fish git curl jq rate-mirrors neovim networkmanager \
   eza bat fd ripgrep bottom dust procs dysk sd uutils-coreutils \
   zoxide fzf tmux starship wayland mesa libinput seatd \
-  greetd greetd-tuigreet swaybg mako libnotify pipewire pipewire-alsa pipewire-pulse wireplumber brightnessctl alacritty ttf-jetbrains-mono ttf-nerd-fonts-symbols-mono adwaita-icon-theme xorg-xwayland wl-clipboard \
+  greetd greetd-tuigreet swaybg mako libnotify pipewire pipewire-alsa pipewire-pulse wireplumber brightnessctl alacritty librewolf xdg-utils ttf-jetbrains-mono ttf-nerd-fonts-symbols-mono adwaita-icon-theme xorg-xwayland wl-clipboard \
   zram-generator dosfstools efibootmgr
 # Snapper create-config requires .snapshots to be unmounted.
 arch-chroot "$target" snapper -c root create-config /
@@ -107,6 +107,8 @@ for name in kova-battery.service kova-battery.timer; do
   install -Dm644 "/usr/lib/systemd/user/$name" "$target/usr/lib/systemd/user/$name"
 done
 install -Dm644 /etc/greetd/config.toml "$target/etc/greetd/config.toml"
+# System-wide XDG browser defaults, overridable by each user's mimeapps.list.
+install -Dm644 /etc/xdg/mimeapps.list "$target/etc/xdg/mimeapps.list"
 install -Dm644 /etc/fonts/conf.d/70-kova-monospace.conf "$target/etc/fonts/conf.d/70-kova-monospace.conf"
 install -Dm644 /etc/os-release "$target/etc/os-release"
 install -Dm644 /etc/issue "$target/etc/issue"

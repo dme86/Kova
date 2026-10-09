@@ -53,6 +53,40 @@ the corrected Anvil development series is `0.3.x`, and Kova now pins
 
 Anvil DRM/KMS, the greetd session and the destructive installer are still experimental and need hardware and disposable-VM integration testing before a public release.
 
+## Default Fish prompt: Tide (no configuration wizard)
+
+Kova preconfigures **Tide v6 Lean** using the style, colors, glyphs and
+left/right prompt layout imported from the user's existing Fish setup.
+At the first interactive login, `/etc/fish/conf.d/kova-tide.fish` seeds
+**missing universal Fish variables**. Tide's asynchronous background prompt
+can then read the same values, and user modifications (for example via
+`set -U tide_git_color_branch ABCDEF`) are never overwritten on later
+logins. There is no first-login `tide configure` requirement.
+
+The complete `tide_pwd_markers` and `tide_right_prompt_items`
+lists were subsequently checked against the original Fish configuration.
+User changes still take precedence over distro-provided defaults.
+
+Alacritty uses JetBrains Mono with the installed **Symbols Nerd Font Mono**
+fallback. Some Nerd Font private-use glyphs will not render inside a web
+browser/chat interface even though they display correctly in an appropriately
+configured terminal. Kova intentionally keeps the small Symbols font rather
+than adding a 200+ MB fully patched typeface.
+
+## Default browser: LibreWolf
+
+**[LibreWolf](https://librewolf.net/)** is Kova's default graphical browser.
+The live ISO and installed system include `librewolf` directly from the
+official Arch Linux `extra` repository and `xdg-utils` for opening links.
+New and existing user accounts inherit the system default MIME handlers from
+`/etc/xdg/mimeapps.list` for HTTP, HTTPS, HTML and XHTML; users can override
+them with `~/.config/mimeapps.list` or `xdg-mime default`. Fish and the
+Anvil session also default `BROWSER` to `librewolf` when not already set.
+
+LibreWolf ships its own application desktop entry, updates normally with
+`pacman -Syu` and uses native Wayland rendering in Anvil's environment.
+No AUR, Flatpak or additional third-party repository is required.
+
 ## Kova default typography and terminal
 
 **Alacritty** is Kova's default Wayland terminal, launched by Anvil's
@@ -134,7 +168,9 @@ The live system uses the hostname `kova` and automatically logs in as `kova` on 
 
 These permissions apply **only to the disposable live environment**. A persistent installation requires its own user provisioning and authentication policy.
 
-Tide is included in the image under `/etc/fish/` and can be customized with `tide configure`. A Nerd Font is recommended for full symbol support but is not bundled.
+Tide is included under `/etc/fish/` and is already configured by Kova; the
+`tide configure` command remains available for optional customization.
+Kova bundles JetBrains Mono with Nerd Font Symbols Mono fallback.
 
 ## Neovim
 

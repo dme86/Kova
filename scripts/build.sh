@@ -56,6 +56,8 @@ pipewire-pulse
 wireplumber
 brightnessctl
 alacritty
+librewolf
+xdg-utils
 ttf-jetbrains-mono
 ttf-nerd-fonts-symbols-mono
 adwaita-icon-theme
