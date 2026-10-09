@@ -6,4 +6,5 @@ export XDG_SESSION_DESKTOP=Anvil
 export QT_QPA_PLATFORM=wayland
 export SDL_VIDEODRIVER=wayland
 export MOZ_ENABLE_WAYLAND=1
+export BROWSER="${BROWSER:-librewolf}"
 exec /usr/local/bin/anvil

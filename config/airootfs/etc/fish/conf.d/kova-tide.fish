@@ -1,8 +1,8 @@
 # Kova Tide defaults: adapted from the user's existing Tide v6 Lean prompt.
 # No tide configure: Fish universal variables are shared with Tide's asynchronous
 # prompt subprocesses and persist per user. Never overwrite existing user values.
-# NOTE: tide_pwd_markers and tide_right_prompt_items were truncated in the
-# captured config; their remaining items use upstream Tide v6 Lean defaults.
+# The full tide_pwd_markers and tide_right_prompt_items lists were verified
+# against the original Fish universal-variable configuration.
 function __kova_tide_defaults
     if not set -q tide_aws_bg_color
         set -U tide_aws_bg_color 'normal'
@@ -323,7 +323,7 @@ function __kova_tide_defaults
         set -U tide_pwd_icon_unwritable ''
     end
     if not set -q tide_pwd_markers
-        set -U tide_pwd_markers '.bzr' '.citc' '.git' '.hg' '.node-version' '.python-version' '.ruby-version' '.shorten_folder_marker' '.svn' '.terraform' 'bun.lockb' 'Cargo.toml' 'composer.json' 'CVS' 'go.mod' 'package.json' 'build.zig'
+        set -U tide_pwd_markers '.bzr' '.citc' '.git' '.hg' '.node-version' '.python-version' '.ruby-version' '.shorten_folder_marker' '.svn' '.terraform' 'Cargo.toml' 'composer.json' 'CVS' 'go.mod' 'package.json' 'build.zig'
     end
     if not set -q tide_python_bg_color
         set -U tide_python_bg_color 'normal'

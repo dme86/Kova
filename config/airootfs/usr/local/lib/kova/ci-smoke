@@ -118,6 +118,17 @@ for cmd in kova fish nvim rg fd eza btm dust procs dysk sd pacman git; do
 done
 log "KOVA_CI_STEP cli-tools passed"
 
+stage="default browser"
+pacman -Q librewolf xdg-utils >/dev/null
+for cmd in librewolf xdg-open xdg-mime; do command -v "$cmd" >/dev/null; done
+test -f /usr/share/applications/librewolf.desktop
+test -f /etc/xdg/mimeapps.list
+/usr/bin/grep -Fqx 'x-scheme-handler/https=librewolf.desktop;' /etc/xdg/mimeapps.list
+/usr/bin/grep -Fqx 'text/html=librewolf.desktop;' /etc/xdg/mimeapps.list
+# Test the effective XDG default as the actual unprivileged live account.
+test "$(runuser -u kova -- env XDG_CURRENT_DESKTOP=Anvil xdg-mime query default x-scheme-handler/https)" = "librewolf.desktop"
+log "KOVA_CI_STEP default-browser passed"
+
 stage="Tide as kova user"
 runuser -u kova -- fish -c 'type -q tide'
 test -f /etc/fish/conf.d/kova-tide.fish

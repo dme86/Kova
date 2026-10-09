@@ -41,6 +41,22 @@ jobs:
           ElementTree.parse(root / "etc/fonts/conf.d/70-kova-monospace.conf")
           print("Fontconfig XML and Alacritty TOML validated")
           PY
+      - name: Verify browser MIME defaults and installation declarations
+        run: |
+          python3 - <<'PY'
+          import configparser
+          from pathlib import Path
+          cfg = configparser.ConfigParser(interpolation=None)
+          cfg.read("config/airootfs/etc/xdg/mimeapps.list")
+          defaults = cfg["Default Applications"]
+          for mime in ("x-scheme-handler/http", "x-scheme-handler/https", "text/html", "application/xhtml+xml"):
+              assert defaults[mime] == "librewolf.desktop;", mime
+          for path in ("scripts/build.sh", "scripts/install-system.sh"):
+              content = Path(path).read_text()
+              assert "librewolf" in content and "xdg-utils" in content, path
+          assert 'install -Dm644 /etc/xdg/mimeapps.list' in Path("scripts/install-system.sh").read_text()
+          print("LibreWolf default MIME handlers and packages verified")
+          PY
       - name: Validate Fish configuration
         run: |
           sudo apt-get update -qq
