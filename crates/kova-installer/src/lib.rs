@@ -1,5 +1,6 @@
 //! Safe Kova installer planning. This crate has no disk-writing operations.
 use std::process::Command;
+pub mod choices;
 
 /// Disk space reserved for the EFI system partition.
 pub const EFI_SIZE_MIB: u64 = 1024;
@@ -170,6 +171,9 @@ impl InstallPlan {
             if !valid_region(value) {
                 return Err(format!("invalid {label}"));
             }
+        }
+        if !self.locale.ends_with(".UTF-8") {
+            return Err("locale must be a supported UTF-8 locale".into());
         }
         Ok(())
     }
