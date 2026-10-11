@@ -144,7 +144,12 @@ jobs:
               # First build the exact clean public ISO, then a distinct CI-only
               # guest image with the smoke-test systemd service injected.
               bash scripts/build.sh
+              # The production ISO and size report are already materialized;
+              # release its staging rootfs before the second build to avoid
+              # exceeding GitHub runner disk space (two >4-GiB rootfs trees).
+              rm -rf /tmp/kova-archiso-work
               KOVA_CI_IMAGE=1 KOVA_OUT_DIR=/repo/out-ci KOVA_WORK=/tmp/kova-archiso-ci-work bash scripts/build.sh
+              rm -rf /tmp/kova-archiso-ci-work
             '
       - name: Validate outputs
         run: |
