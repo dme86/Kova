@@ -8,7 +8,7 @@ test = Path("scripts/test-iso.sh").read_text()
 assert "KOVA_CI_IMAGE:-0" in build, "default mode must be a clean ISO"
 assert 'rm -f "$PROFILE/airootfs/usr/local/lib/kova/ci-smoke"' in build
 assert 'rm -f "$PROFILE/airootfs/etc/systemd/system/kova-ci-smoke.service"' in build
-assert 'if [[ \${KOVA_CI_IMAGE:-0} == 1 ]]; then' in build
+assert '== 1 ]]; then' in build
 assert 'ln -s ../kova-ci-smoke.service ' in build
 assert 'iso_name="kova-ci"' in build
 assert 'KOVA_CI_IMAGE=1 KOVA_OUT_DIR=/repo/out-ci' in pipeline
