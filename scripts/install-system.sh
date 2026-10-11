@@ -37,7 +37,7 @@ if lsblk -nr -o FSTYPE -- "$disk" | grep -Eq 'iso9660|squashfs'; then
 fi
 [[ $token == "ERASE:$majmin" ]] || { echo "Missing device-specific erase confirmation" >&2; exit 1; }
 IFS= read -r -s password || { echo "Password missing" >&2; exit 1; }
-[[ -n $password && $password != *:* && $password != *
+[[ -n $password && $password != *:* && $password != *$'\n'* && $password != *$'\r'* ]] || { echo "Empty or unsafe user password" >&2; exit 1; }
 target=/mnt/kova-install
 [[ ! -e $target ]] || { echo "$target already exists" >&2; exit 1; }
 mkdir -p "$target"
