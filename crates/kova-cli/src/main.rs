@@ -119,7 +119,8 @@ fn select_option(label: &str, options: &[String], default: &str) -> Result<Optio
             page = 0;
         } else if let Ok(index) = response.parse::<usize>() {
             if let Some(value) = index.checked_sub(1)
-                .and_then(|i| matches.get(offset + i)).filter(|_| index <= CHOICES_PER_PAGE)
+                .filter(|&i| i < CHOICES_PER_PAGE)
+                .and_then(|i| matches.get(offset + i))
             {
                 return Ok(Some((**value).clone()));
             }
