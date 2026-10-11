@@ -5,11 +5,13 @@ ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 ISO_DIR=${KOVA_TEST_ISO_DIR:-"$ROOT/out"}
 MODE=${KOVA_TEST_MODE:-production}
 case "$MODE" in ci|production) ;; *) echo "KOVA_TEST_MODE must be ci or production" >&2; exit 2 ;; esac
+FIRMWARE=${KOVA_TEST_FIRMWARE:-bios}
+case "$FIRMWARE" in bios|uefi) ;; *) echo "KOVA_TEST_FIRMWARE must be bios or uefi" >&2; exit 2 ;; esac
 ISO=$(find "$ISO_DIR" -maxdepth 1 -name '*.iso' -type f -print -quit)
 [[ -n "$ISO" ]] || { echo "No Kova ISO found in out/" >&2; exit 1; }
 command -v qemu-system-x86_64 >/dev/null || { echo "QEMU is not installed" >&2; exit 1; }
 
-LOG_DIR="$ROOT/test-results/$MODE"
+LOG_DIR="$ROOT/test-results/$MODE-$FIRMWARE"
 mkdir -p "$LOG_DIR"
 SERIAL_LOG="$LOG_DIR/qemu-serial.log"
 QEMU_LOG="$LOG_DIR/qemu-stderr.log"
@@ -23,12 +25,26 @@ if [[ -c /dev/kvm && -r /dev/kvm && -w /dev/kvm ]]; then
   ACCEL="kvm:tcg"
 fi
 
-echo "Booting $(basename "$ISO") with QEMU (accelerator: $ACCEL)"
+firmware_args=()
+if [[ $FIRMWARE == uefi ]]; then
+  # Ubuntu's ovmf package supplies separate readonly firmware and writable vars.
+  code=${KOVA_OVMF_CODE:-/usr/share/OVMF/OVMF_CODE_4M.fd}
+  vars=${KOVA_OVMF_VARS:-/usr/share/OVMF/OVMF_VARS_4M.fd}
+  [[ -r "$code" && -r "$vars" ]] || { echo "OVMF images missing: $code $vars" >&2; exit 1; }
+  cp "$vars" "$LOG_DIR/ovmf-vars.fd"
+  firmware_args=(
+    -drive "if=pflash,format=raw,readonly=on,file=$code"
+    -drive "if=pflash,format=raw,file=$LOG_DIR/ovmf-vars.fd"
+  )
+fi
+
+echo "Booting $(basename "$ISO") with QEMU ($FIRMWARE, accelerator: $ACCEL)"
 qemu-system-x86_64 \
   -machine "q35,accel=$ACCEL" \
   -cpu max \
   -smp 2 \
   -m 3072 \
+  "${firmware_args[@]}" \
   -boot order=d \
   -drive "file=$ISO,media=cdrom,format=raw,readonly=on" \
   -display none \
