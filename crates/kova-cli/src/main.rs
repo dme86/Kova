@@ -66,8 +66,9 @@ fn select_option(label: &str, options: &[String], default: &str) -> Result<Optio
     }
     let mut filter = String::new();
     loop {
+        let needle = filter.to_ascii_lowercase();
         let mut matches: Vec<&String> = options.iter()
-            .filter(|v| v.to_ascii_lowercase().contains(&filter.to_ascii_lowercase()))
+            .filter(|v| v.to_ascii_lowercase().contains(needle.as_str()))
             .collect();
         // Offer the current value first, then a small list; avoid flooding tty/serial.
         if let Some(idx) = matches.iter().position(|v| v.as_str() == default) {
