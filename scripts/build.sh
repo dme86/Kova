@@ -153,6 +153,16 @@ fi
 # Live networking follows the official releng configuration.
 mkdir -p "$OUT"
 mkarchiso -v -w "$WORK" -o "$OUT" "$PROFILE"
+# Verify the actual assembled SquashFS source, not only the temporary profile.
+if [[ ${KOVA_CI_IMAGE:-0} != 1 ]]; then
+  for relative in usr/local/lib/kova/ci-smoke etc/systemd/system/kova-ci-smoke.service \
+    etc/systemd/system/multi-user.target.wants/kova-ci-smoke.service; do
+    test ! -e "$WORK/x86_64/airootfs/$relative" || {
+      echo "Refusing to ship a production ISO containing $relative" >&2
+      exit 1
+    }
+  done
+fi
 # Record package/asset sizes before mkarchiso staging is discarded.
 bash "$ROOT/scripts/report-iso-size.sh" "$OUT" "$WORK" "$PROFILE"
 (cd "$OUT" && sha256sum ./*.iso > SHA256SUMS)
