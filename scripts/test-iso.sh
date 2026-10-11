@@ -90,6 +90,11 @@ while (( SECONDS < DEADLINE )); do
     if grep -aq 'unit=kova-live-user.*res=success' "$SERIAL_LOG" &&
        grep -aq 'unit=getty@tty1.*res=success' "$SERIAL_LOG" &&
        grep -aq 'kova login:' "$SERIAL_LOG"; then
+      # Keep a visible trace of the /dev/sr0 loop-device warning from #14
+      # rather than masking unrelated systemd failures to make CI green.
+      if grep -aq 'Failed to start Attach File.*Loopback Block Device' "$SERIAL_LOG"; then
+        echo "::warning::Systemd reported a loopback attachment failure; inspect the QEMU serial artifact (issue #14)."
+      fi
       echo "Unmodified production Kova ISO booted with live user and login."
       exit 0
     fi
