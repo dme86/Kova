@@ -11,6 +11,9 @@ cp -a /usr/share/archiso/configs/releng/. "$PROFILE/"
   exit 1
 }
 cp -a "$ROOT/config/airootfs/." "$PROFILE/airootfs/"
+# The Archiso releng MOTD contains upstream Arch install instructions.
+# Explicitly override it with concise Kova live help.
+grep -Fq "Super + Enter" "$PROFILE/airootfs/etc/motd"
 # Enable live user provisioning and serial smoke testing in the live image.
 mkdir -p "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants"
 ln -s ../kova-live-user.service "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants/kova-live-user.service"
