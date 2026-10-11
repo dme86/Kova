@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 ISO_DIR=${KOVA_TEST_ISO_DIR:-"$ROOT/out"}
-MODE=${KOVA_TEST_MODE:-ci}
+MODE=${KOVA_TEST_MODE:-production}
 case "$MODE" in ci|production) ;; *) echo "KOVA_TEST_MODE must be ci or production" >&2; exit 2 ;; esac
 ISO=$(find "$ISO_DIR" -maxdepth 1 -name '*.iso' -type f -print -quit)
 [[ -n "$ISO" ]] || { echo "No Kova ISO found in out/" >&2; exit 1; }
