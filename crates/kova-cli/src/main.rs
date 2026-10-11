@@ -110,7 +110,7 @@ fn select_option(label: &str, options: &[String], default: &str) -> Result<Optio
 fn valid_password(password: &str) -> bool {
     !password.is_empty()
         && !password.contains(':')
-        && !password.contains(['\n', '\r'])
+        && !password.contains('\n') && !password.contains('\r')
 }
 
 fn ask_password() -> Result<String, String> {
