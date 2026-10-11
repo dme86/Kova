@@ -29,7 +29,7 @@ Interactive Fish sessions prefer `eza` for `ls`, `bat` for `cat`, `dust` for `du
 
 Kova's Cargo workspace contains two internal Rust crates and one `kova` executable.
 
-**Installer:** `kova install` previews an installation; `kova install --list-disks` inspects disks; `kova install --dry-run --demo` is a synthetic preview. `kova install --apply` actually wipes the selected disk and installs GPT/UEFI, Btrfs/ZSTD, Snapper + snap-pac, systemd-boot, Fish, greetd and Anvil. It requires a real interactive terminal, a separate `ERASE /dev/...` confirmation and user password entered without echo. The backend re-verifies device identity and refuses mounted or removable targets. **WARNING: this mode irreversibly wipes the selected disk and has not yet been certified by a complete installed-system QEMU/OVMF boot test. Do not try it on valuable physical disks.** No dual boot, LUKS2 or automatic rollback yet.
+**Installer:** `kova install` previews an installation and can apply it in the same session after explicit confirmation; `kova install --list-disks` inspects disks; `kova install --dry-run --demo` is a synthetic preview. `kova install --apply` actually wipes the selected disk and installs GPT/UEFI, Btrfs/ZSTD, Snapper + snap-pac, systemd-boot, Fish, greetd and Anvil. It requires a real interactive terminal, a separate `ERASE /dev/...` confirmation and user password entered without echo. The backend re-verifies device identity and refuses mounted or removable targets. **WARNING: this mode irreversibly wipes the selected disk and has not yet been certified by a complete installed-system QEMU/OVMF boot test. Do not try it on valuable physical disks.** No dual boot, LUKS2 or automatic rollback yet.
 
 **News:** `kova news` matches cached Arch Linux RSS articles against installed Pacman packages. `kova news read N` acknowledges an article, `kova news --all` shows everything, and `kova news --summary` is displayed at Fish login without network access. A systemd timer refreshes the RSS cache every six hours. Package matching is heuristic: important upstream notices may not mention installed package names, so `--all` remains useful.
 
@@ -163,6 +163,9 @@ Run `sudo systemctl start kova-mirrors.service` for a scheduled refresh, or `sud
 The upstream `rate-mirrors` license is **CC BY-NC-SA 3.0**; review its distribution/commercial-use restrictions before public releases.
 
 ## Live environment
+
+After auto-login on the live tty, type `kova-session` to start **Anvil**, Kova's Wayland desktop. Inside Anvil, press **Super + Enter** to open **Alacritty**. To install from the live terminal, run `kova install`, review the proposed disk layout, opt in to apply, and type the exact `ERASE /dev/...` confirmation. Locale, console keyboard map and timezone are selected from offline searchable lists (`/Berlin` filters a timezone search, `b` goes back). `kova install --dry-run` makes no changes.
+
 
 The live system uses the hostname `kova` and automatically logs in as `kova` on `tty1`, using Fish. The account is created during boot, with its password locked and passwordless `sudo` enabled for the live session.
 

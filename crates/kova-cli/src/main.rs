@@ -1,15 +1,15 @@
 //! Kova's single user-facing Rust executable.
-use kova_installer::{demo_plan, discover_disks, Disk, InstallPlan};
+use kova_installer::{choices, demo_plan, discover_disks, Disk, InstallPlan};
 use std::io::{self, IsTerminal, Write};
 use std::process::{Command, Stdio};
 
 fn usage() {
     println!(
         "Kova Linux\n\
-         kova install                 Interactive disk and installation planner\n\
+         kova install                 Preview; optionally install with confirmation\n\
          kova install --list-disks    Read-only disk discovery\n\
          kova install --dry-run --demo  Preview a synthetic disk (CI)\n\
-         kova install --apply        ERASE selected dedicated disk and install Kova (UEFI only)\n\
+         kova install --apply         Show plan, then request ERASE confirmation (UEFI)\n\
          kova news                   Relevant Arch Linux announcements\n\
          kova news --summary         Fast cached login notification\n\
          kova news read N            Read and acknowledge announcement N\n\
@@ -56,6 +56,95 @@ fn secret(prompt: &str) -> Result<String, String> {
     }
     read.map_err(|e| e.to_string())?;
     Ok(input.trim_end_matches(['\n', '\r']).to_string())
+}
+
+// Numbered, searchable menus: no GUI or extra terminal dependency needed.
+// Returning None navigates to the previous field.
+fn select_option(label: &str, options: &[String], default: &str) -> Result<Option<String>, String> {
+    if options.is_empty() {
+        return Err(format!("no {label} options available; cannot continue"));
+    }
+    let mut filter = String::new();
+    loop {
+        let needle = filter.to_ascii_lowercase();
+        let mut matches: Vec<&String> = options.iter()
+            .filter(|v| v.to_ascii_lowercase().contains(needle.as_str()))
+            .collect();
+        // Offer the current value first, then a small list; avoid flooding tty/serial.
+        if let Some(idx) = matches.iter().position(|v| v.as_str() == default) {
+            let current = matches.remove(idx);
+            matches.insert(0, current);
+        }
+        println!("\n{label}: {} choices{} (current: {default})",
+            matches.len(), if filter.is_empty() { "" } else { " matching filter" });
+        for (i, value) in matches.iter().take(12).enumerate() {
+            println!("  {:>2}. {}", i + 1, value);
+        }
+        if matches.len() > 12 {
+            println!("  ... type /text to filter the list");
+        }
+        let response = ask_exact("Choose number, /search, exact name, Enter=current, b=back")?;
+        if response == "b" {
+            return Ok(None);
+        }
+        if response.is_empty() {
+            if options.iter().any(|v| v == default) {
+                return Ok(Some(default.to_owned()));
+            }
+            println!("Current value is not available; choose from the list.");
+        } else if let Some(needle) = response.strip_prefix('/') {
+            filter = needle.to_owned();
+        } else if let Ok(index) = response.parse::<usize>() {
+            if let Some(value) = index.checked_sub(1).and_then(|i| matches.get(i)).filter(|_| index <= 12) {
+                return Ok(Some((**value).clone()));
+            }
+            println!("Invalid selection.");
+        } else if options.iter().any(|v| v == &response) {
+            return Ok(Some(response));
+        } else {
+            filter = response;
+            println!("Searching for {filter:?}; enter a number to select.");
+        }
+    }
+}
+
+fn valid_password(password: &str) -> bool {
+    !password.is_empty()
+        && !password.contains(':')
+        && !password.contains('\n') && !password.contains('\r')
+}
+
+fn ask_password() -> Result<String, String> {
+    loop {
+        let password = secret("New user password")?;
+        if !valid_password(&password) {
+            println!("Password must not be empty or contain a colon. Please try again.");
+            continue;
+        }
+        if password.chars().count() < 8 {
+            println!("WARNING: short passwords are insecure; use only on disposable/test systems.");
+        }
+        let repeated = secret("Confirm user password")?;
+        if repeated != password {
+            println!("Passwords do not match; please try again.");
+            continue;
+        }
+        return Ok(password);
+    }
+}
+
+#[cfg(test)]
+mod ui_tests {
+    use super::*;
+    #[test]
+    fn short_passwords_allowed_with_safe_backend_constraints() {
+        assert!(valid_password("123"));
+        assert!(valid_password("much-longer-password"));
+        assert!(!valid_password(""));
+        assert!(!valid_password("ab:cd"));
+        assert!(!valid_password("ab\ncd"));
+        assert!(!valid_password("ab\rcd"));
+    }
 }
 
 fn disks_list(disks: &[Disk]) {
@@ -127,22 +216,61 @@ fn install(args: &[String]) -> Result<(), String> {
     let interactive = io::stdin().is_terminal() && !dry_run;
     let mut plan = InstallPlan {
         disk: selected,
-        username: user.unwrap_or_else(|| "user".into()),
-        hostname: host.unwrap_or_else(|| "kova".into()),
-        locale: locale.unwrap_or_else(|| "en_US.UTF-8".into()),
-        keyboard: keyboard.unwrap_or_else(|| "us".into()),
-        timezone: timezone.unwrap_or_else(|| "UTC".into()),
+        username: user.clone().unwrap_or_else(|| "user".into()),
+        hostname: host.clone().unwrap_or_else(|| "kova".into()),
+        locale: locale.clone().unwrap_or_else(|| "en_US.UTF-8".into()),
+        keyboard: keyboard.clone().unwrap_or_else(|| "us".into()),
+        timezone: timezone.clone().unwrap_or_else(|| "UTC".into()),
     };
+    // Get actual valid choices from the running live ISO. All lists are offline.
+    let locales = choices::locales()?;
+    let keyboards = choices::keymaps()?;
+    let timezones = choices::timezones()?;
     if interactive {
-        plan.username = ask("Username", &plan.username)?;
-        plan.hostname = ask("Hostname", &plan.hostname)?;
-        plan.locale = ask("Locale", &plan.locale)?;
-        plan.keyboard = ask("Keyboard", &plan.keyboard)?;
-        plan.timezone = ask("Timezone", &plan.timezone)?;
+        let mut stage: usize = 0;
+        while stage < 5 {
+            let selected: Option<String> = match stage {
+                0 if user.is_some() => Some(plan.username.clone()),
+                0 => { let v = ask("Username (b=back)", &plan.username)?; if v == "b" { None } else { Some(v) } }
+                1 if host.is_some() => Some(plan.hostname.clone()),
+                1 => { let v = ask("Hostname (b=back)", &plan.hostname)?; if v == "b" { None } else { Some(v) } }
+                2 if locale.is_some() => Some(plan.locale.clone()),
+                2 => select_option("Locale", &locales, &plan.locale)?,
+                3 if keyboard.is_some() => Some(plan.keyboard.clone()),
+                3 => select_option("Keyboard layout", &keyboards, &plan.keyboard)?,
+                4 if timezone.is_some() => Some(plan.timezone.clone()),
+                4 => select_option("Timezone", &timezones, &plan.timezone)?,
+                _ => unreachable!(),
+            };
+            match selected {
+                None => { stage = stage.saturating_sub(1); }
+                Some(value) => {
+                    match stage {
+                        0 => plan.username = value,
+                        1 => plan.hostname = value,
+                        2 => plan.locale = value,
+                        3 => plan.keyboard = value,
+                        4 => plan.timezone = value,
+                        _ => unreachable!(),
+                    }
+                    stage += 1;
+                }
+            }
+        }
     }
+    choices::validate_choice("locale", &plan.locale, &locales)?;
+    choices::validate_choice("keyboard", &plan.keyboard, &keyboards)?;
+    choices::validate_choice("timezone", &plan.timezone, &timezones)?;
     println!("{}", plan.preview()?);
     if !apply {
-        return Ok(());
+        if !interactive {
+            return Ok(());
+        }
+        let answer = ask("Apply this plan now? (yes/no)", "no")?;
+        if answer != "yes" {
+            println!("No disk changes made.");
+            return Ok(());
+        }
     }
     if plan.disk.removable {
         return Err("removable disks are not supported for destructive installation".into());
@@ -152,14 +280,7 @@ fn install(args: &[String]) -> Result<(), String> {
     if ask_exact(&format!("To continue type exactly: {expected}"))? != expected {
         return Err("disk erase confirmation did not match; no changes made".into());
     }
-    let password = secret("New user password (8+ characters)")?;
-    if password.len() < 8 || password.contains(':') || password.contains('\n') {
-        return Err("password must contain at least 8 characters and no colon".into());
-    }
-    let repeated = secret("Confirm user password")?;
-    if repeated != password {
-        return Err("passwords did not match".into());
-    }
+    let password = ask_password()?;
     // Capture identity at the last possible moment; backend independently rechecks.
     let output = Command::new("lsblk").args(["-dn", "-o", "MAJ:MIN", "--"])
         .arg(&plan.disk.path).output().map_err(|e| e.to_string())?;

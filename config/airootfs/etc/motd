@@ -1,0 +1,10 @@
+Welcome to Kova Linux
+
+  kova install       Preview and optionally install Kova (erases selected disk)
+  kova install --apply  Review an installation, then confirm ERASE /dev/...
+  kova news          System announcements
+  kova --help        Available commands
+
+  kova-session       Start Anvil, the Wayland desktop
+  Super + Enter      Open Alacritty inside Anvil
+

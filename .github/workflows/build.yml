@@ -29,6 +29,8 @@ jobs:
         run: bash tests/test-osd.sh
       - name: Test mirror updater without network
         run: bash tests/test-mirrors.sh
+      - name: Check live banner and installer ordering
+        run: bash tests/test-installer-static.sh
       - name: Validate Kova font and terminal settings
         run: |
           python3 - <<'PY'

@@ -10,12 +10,16 @@ Kova is opinionated about the installed Linux system, **not** about
 destroying an existing operating system. The first implementation will
 support installation to an empty, dedicated disk; shared-disk dual boot is
 a later, separately tested installer mode.
-The first milestone ships a dependency-light Rust terminal wizard called
-`kova install` for disk discovery, validation and a dry-run preview.
-Upgrade that wizard to a ratatui/crossterm interface after we have a
-tested real installation backend. Do not claim the preview installs Linux.
-The eventual installer uses a small native Rust TUI,
-not the Python archinstall or desktop-focused Calamares. The Rust frontend
+The installer uses a dependency-light native Rust CLI with numbered,
+searchable, offline selection lists for UTF-8 locale, console keyboard map,
+and IANA timezone. It deliberately avoids large graphical installers.
+The default `kova install` first previews the installation and asks whether
+to proceed **in the same invocation**. Saying no leaves all disks unchanged.
+`kova install --dry-run` is read-only, and `kova install --apply` directly
+previews the plan and requests the exact destructive confirmation. You can
+enter `b` to return to earlier steps and `/Berlin` to filter timezone entries.
+Values passed as CLI flags are still validated against local catalogs.
+The installer does not require internet to read these catalogs. The Rust frontend
 invokes tested Arch tools (`sgdisk`, `mkfs`, `pacstrap`, `genfstab`,
 `arch-chroot`, `bootctl`) for the actual disk and system operations.
 
@@ -96,7 +100,9 @@ the updater and the enabled timer.
 
 Inside the installed target, after mounting and `pacstrap`:
 
-1. Install `btrfs-progs`, `snapper` and `snap-pac` from official repos.
+1. Install `btrfs-progs` and `snapper` from official repos, but **not `snap-pac` yet**.
+   The `snap-pac` hook can otherwise fail during initial pacstrap before the
+   Snapper root configuration exists.
 2. Create the root Snapper configuration using `snapper -c root create-config /`
    **before** mounting the dedicated `@snapshots` volume at `/.snapshots`.
    Snapper creates an initial `/.snapshots` Btrfs subvolume itself.
@@ -105,10 +111,16 @@ Inside the installed target, after mounting and `pacstrap`:
    This avoids the common create-config conflict with a pre-mounted
    `@snapshots` volume. Apply appropriate permissions.
 4. Enable `snapper-timeline.timer` and `snapper-cleanup.timer`, and
-   explicitly configure retention. `snap-pac` supplies pacman hooks for
-   pre- and post-transaction snapshots.
+   explicitly configure retention.
 5. Create a baseline snapshot and verify that `snapper -c root list`
    includes it.
+6. **Only then** install `snap-pac` in the configured target system so its
+   pacman hooks cannot run against an unconfigured root during initial pacstrap.
+
+On failure, cleanup attempts to stop only the GPG agent associated with the
+installer target keyring, retries recursive unmount, and reports remaining
+mounts and processes if the target stays busy. Never retry a destructive
+install while old target mounts are still active.
 
 **Snapshot ≠ backup**: data on the same physical disk will be lost if the
 disk fails. Add Btrfs send/receive or other remote backup later.
