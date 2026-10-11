@@ -132,4 +132,6 @@ KOVA_PERMISSIONS
 # Live networking follows the official releng configuration.
 mkdir -p "$ROOT/out"
 mkarchiso -v -w "$WORK" -o "$ROOT/out" "$PROFILE"
+# Record package/asset sizes before mkarchiso staging is discarded.
+bash "$ROOT/scripts/report-iso-size.sh" "$ROOT/out" "$WORK" "$PROFILE"
 (cd "$ROOT/out" && sha256sum ./*.iso > SHA256SUMS)
