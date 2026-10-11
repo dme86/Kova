@@ -12,6 +12,13 @@ assert "Super + Enter" in motd
 assert "Alacritty" in motd
 
 installer = Path("scripts/install-system.sh").read_text()
+# A syntax-valid shell script can still contain a second destructive install.
+# A previous patch accidentally appended full repeated blocks after success.
+assert installer.count('pacstrap -K "$target"') == 1, "pacstrap may only run once"
+assert installer.count("target=/mnt/kova-install") == 1, "installer entry must be unique"
+finished = 'echo "Kova installed. Remove installation ISO and reboot."'
+assert installer.count(finished) == 1, "success message may only occur once"
+assert installer.rstrip().endswith(finished), "no commands may run after successful installation"
 initial = installer.split('pacstrap -K "$target" \\', 1)[1].split('arch-chroot "$target" snapper -c root create-config', 1)[0]
 assert "snapper " in initial
 assert "snap-pac" not in initial, "snap-pac hooks must not run during initial pacstrap"
