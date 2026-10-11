@@ -119,6 +119,12 @@ SYSLINUX_CFG="$PROFILE/syslinux/archiso_sys-linux.cfg"
 [[ -f "$SYSLINUX_CFG" ]] || { echo "Missing Archiso BIOS boot entry: $SYSLINUX_CFG" >&2; exit 1; }
 sed -i -E '/^APPEND /s|$| console=ttyS0,115200n8 console=tty0 loglevel=6 systemd.log_level=info systemd.log_target=kmsg|' "$SYSLINUX_CFG"
 grep -q 'console=ttyS0,115200n8' "$SYSLINUX_CFG"
+# Test the UEFI/OVMF path as well; the live installer requires UEFI.
+# Mirror BIOS serial diagnostics while keeping tty0 as the visible console.
+UEFI_ENTRY="$PROFILE/efiboot/loader/entries/01-archiso-linux.conf"
+[[ -f "$UEFI_ENTRY" ]] || { echo "Missing Archiso UEFI entry: $UEFI_ENTRY" >&2; exit 1; }
+sed -i -E '/^options /s|$| console=ttyS0,115200n8 console=tty0 loglevel=6 systemd.log_level=info systemd.log_target=kmsg|' "$UEFI_ENTRY"
+grep -q 'console=ttyS0,115200n8' "$UEFI_ENTRY"
 # Archiso copies custom airootfs files without their original file modes.
 # Explicitly restore executable permissions for our live-system scripts.
 # Missing these entries causes kova-live-user.service to fail with 203/EXEC.
