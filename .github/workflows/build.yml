@@ -29,6 +29,8 @@ jobs:
         run: bash tests/test-osd.sh
       - name: Test mirror updater without network
         run: bash tests/test-mirrors.sh
+      - name: Test offline ISO size report generator
+        run: bash tests/test-size-report.sh
       - name: Check live banner and installer ordering
         run: bash tests/test-installer-static.sh
       - name: Validate Kova font and terminal settings
@@ -143,6 +145,17 @@ jobs:
         run: |
           test -n "$(find out -maxdepth 1 -name '*.iso' -print -quit)"
           (cd out && sha256sum -c SHA256SUMS)
+      - name: Publish ISO size audit
+        run: |
+          test -s out/SIZE_REPORT.md
+          cat out/SIZE_REPORT.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload size audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kova-size-report
+          path: out/SIZE_REPORT.md
+          if-no-files-found: error
+          retention-days: 30
       - name: Upload ISO for boot verification
         uses: actions/upload-artifact@v4
         with:
