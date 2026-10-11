@@ -49,6 +49,11 @@ test -f /home/kova/.config/nvim/lazy-lock.json
 id -nG kova | tr ' ' '\n' | grep -qx wheel
 systemctl is-active --quiet kova-live-user.service
 systemctl cat getty@tty1.service | grep -q -- '--autologin kova'
+# The inherited Archiso guide and color test must never appear on the live tty.
+test -f /etc/motd
+/usr/bin/grep -Fq 'kova-session' /etc/motd
+/usr/bin/grep -Fq 'Super + Enter' /etc/motd
+! /usr/bin/grep -Fq 'To install Arch Linux' /etc/motd
 log "KOVA_CI_STEP live-account passed"
 
 stage="automatic mirror refresh configuration"
