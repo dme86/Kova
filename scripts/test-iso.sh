@@ -2,11 +2,14 @@
 set -euo pipefail
 
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-ISO=$(find "$ROOT/out" -maxdepth 1 -name '*.iso' -type f -print -quit)
+ISO_DIR=${KOVA_TEST_ISO_DIR:-"$ROOT/out"}
+MODE=${KOVA_TEST_MODE:-production}
+case "$MODE" in ci|production) ;; *) echo "KOVA_TEST_MODE must be ci or production" >&2; exit 2 ;; esac
+ISO=$(find "$ISO_DIR" -maxdepth 1 -name '*.iso' -type f -print -quit)
 [[ -n "$ISO" ]] || { echo "No Kova ISO found in out/" >&2; exit 1; }
 command -v qemu-system-x86_64 >/dev/null || { echo "QEMU is not installed" >&2; exit 1; }
 
-LOG_DIR="$ROOT/test-results"
+LOG_DIR="$ROOT/test-results/$MODE"
 mkdir -p "$LOG_DIR"
 SERIAL_LOG="$LOG_DIR/qemu-serial.log"
 QEMU_LOG="$LOG_DIR/qemu-stderr.log"
@@ -48,17 +51,31 @@ trap cleanup EXIT
 # 10 minutes is intentionally generous for software emulation (TCG).
 DEADLINE=$((SECONDS + 600))
 while (( SECONDS < DEADLINE )); do
-  if grep -q 'KOVA_CI_PASS' "$SERIAL_LOG"; then
-    echo "Kova boot and guest smoke tests passed."
-    grep 'KOVA_CI_' "$SERIAL_LOG" | tail -n 25 || true
-    exit 0
-  fi
-  if grep -q 'KOVA_CI_FAIL' "$SERIAL_LOG" ||
-     grep -q 'kova-ci-smoke.service: Failed with result' "$SERIAL_LOG"; then
-    echo "Guest smoke test failed. CI steps and last serial output:" >&2
-    grep -a 'KOVA_CI_' "$SERIAL_LOG" >&2 || true
-    tail -n 120 "$SERIAL_LOG" >&2
-    exit 1
+  if [[ $MODE == ci ]]; then
+    if grep -aq 'KOVA_CI_PASS' "$SERIAL_LOG"; then
+      echo "Kova instrumented guest smoke tests passed."
+      grep -a 'KOVA_CI_' "$SERIAL_LOG" | tail -n 25 || true
+      exit 0
+    fi
+    if grep -aq 'KOVA_CI_FAIL' "$SERIAL_LOG" ||
+       grep -aq 'kova-ci-smoke.service: Failed with result' "$SERIAL_LOG"; then
+      echo "Guest smoke test failed. CI steps and last serial output:" >&2
+      grep -a 'KOVA_CI_' "$SERIAL_LOG" >&2 || true
+      tail -n 120 "$SERIAL_LOG" >&2
+      exit 1
+    fi
+  else
+    if grep -aq 'KOVA_CI_BEGIN' "$SERIAL_LOG" || grep -aq 'unit=kova-ci-smoke' "$SERIAL_LOG"; then
+      echo "PRODUCTION ISO BOOTED CI-ONLY TEST UNIT; refusing release!" >&2
+      exit 1
+    fi
+    # The CI guest performs exhaustive checks; the production ISO must be
+    # tested unmodified using externally visible tty1 autologin evidence.
+    # Long-running systemd units don't reliably emit audit start records.
+    if bash "$ROOT/scripts/assert-production-boot.sh" "$SERIAL_LOG"; then
+      echo "Unmodified production Kova ISO booted with live user and login."
+      exit 0
+    fi
   fi
   if ! kill -0 "$QEMU_PID" 2>/dev/null; then
     echo "QEMU exited before the guest reported success." >&2
@@ -69,7 +86,7 @@ while (( SECONDS < DEADLINE )); do
   sleep 2
 done
 
-echo "Timed out waiting for the Kova guest smoke test." >&2
+echo "Timed out waiting for the Kova $MODE guest boot signal." >&2
 cat "$QEMU_LOG" >&2
 tail -n 120 "$SERIAL_LOG" >&2
 exit 1
