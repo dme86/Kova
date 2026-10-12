@@ -13,7 +13,7 @@ policy=$(cat <<'POLICY'
 # KOVA_LIVE_CONTENT_POLICY_START
 # Only mkarchiso's temporary profile uses these rules.
 # Later negated (!...) paths restore languages that should remain.
-NoExtract = usr/share/locale/* !usr/share/locale/de*/LC_MESSAGES/* !usr/share/locale/en*/LC_MESSAGES/* !usr/share/locale/C/LC_MESSAGES/*
+NoExtract = usr/share/locale/* !usr/share/locale/de*/LC_MESSAGES/* !usr/share/locale/en*/LC_MESSAGES/* !usr/share/locale/C/LC_MESSAGES/* !usr/share/locale/locale.alias
 NoExtract = usr/share/man/* !usr/share/man/man*/* !usr/share/man/de*/* !usr/share/man/en*/*
 NoExtract = usr/share/doc/*
 # KOVA_LIVE_CONTENT_POLICY_END
