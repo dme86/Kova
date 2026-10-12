@@ -30,7 +30,10 @@ assert 'scripts/assert-production-boot.sh' in test
 assert 'acct="kova"' in Path('scripts/assert-production-boot.sh').read_text()
 assert 'kova login:' in Path('scripts/assert-production-boot.sh').read_text()
 assert "gh release create" in pipeline
-assert 'out/*.iso out/SHA256SUMS' in pipeline
+assert 'out/SHA256SUMS' in pipeline
+# The release job now resolves the single already-tested ISO to "$iso".
+# Accept the previous glob too, but never publish the CI-only image.
+assert 'out/*.iso out/SHA256SUMS' in pipeline or '"$iso" out/SHA256SUMS' in pipeline
 assert 'out-ci/*.iso' not in pipeline.split("  release:", 1)[1]
 print("CI instrumentation isolation and clean production ISO publishing: OK")
 PY
