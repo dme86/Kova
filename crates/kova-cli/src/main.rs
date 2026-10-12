@@ -51,22 +51,62 @@ fn ask_exact(prompt: &str) -> Result<String, String> {
     Ok(response.trim_end_matches(['\n', '\r']).to_string())
 }
 
+struct HiddenInput(String);
+impl HiddenInput {
+    fn new() -> Result<Self, String> {
+        let old = Command::new("stty").args(["-F", "/dev/tty", "-g"])
+            .output().map_err(|e| format!("stty: {e}"))?;
+        if !old.status.success() { return Err("cannot read TTY configuration".into()); }
+        let original = String::from_utf8_lossy(&old.stdout).trim().to_owned();
+        let status = Command::new("stty").args(["-F", "/dev/tty",
+            "-echo", "-icanon", "-isig", "min", "0", "time", "1"])
+            .status().map_err(|e| e.to_string())?;
+        if !status.success() { return Err("cannot mask password input".into()); }
+        Ok(Self(original))
+    }
+}
+impl Drop for HiddenInput {
+    fn drop(&mut self) {
+        let _ = Command::new("stty").args(["-F", "/dev/tty", &self.0]).status();
+    }
+}
+
 fn secret(prompt: &str) -> Result<String, String> {
-    print!("{prompt}: ");
+    print!("{prompt} (hidden; Ctrl+C to cancel): ");
     io::stdout().flush().map_err(|e| e.to_string())?;
-    let off = Command::new("stty").arg("-echo").status().map_err(|e| e.to_string())?;
-    if !off.success() {
-        return Err("cannot disable terminal echo".into());
+    let guard = HiddenInput::new()?;
+    let mut tty = OpenOptions::new().read(true).open("/dev/tty")
+        .map_err(|e| e.to_string())?;
+    let mut buf = Vec::new();
+    loop {
+        let mut ch = [0_u8; 1];
+        match tty.read(&mut ch) {
+            Ok(0) => { thread::sleep(Duration::from_millis(15)); continue; }
+            Ok(1) => match ch[0] {
+                3 | 4 => {
+                    drop(guard);
+                    println!();
+                    return Err("password entry cancelled; no disk changes made".into());
+                }
+                10 | 13 => break,
+                8 | 127 => {
+                    buf.pop();
+                    while !buf.is_empty() && std::str::from_utf8(&buf).is_err() {
+                        buf.pop();
+                    }
+                }
+                21 => buf.clear(),
+                b if b >= 32 && buf.len() < 1024 => buf.push(b),
+                _ => {},
+            },
+            Ok(_) => unreachable!(),
+            Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+            Err(e) => return Err(format!("password input failed: {e}")),
+        }
     }
-    let mut input = String::new();
-    let read = io::stdin().read_line(&mut input);
-    let restore = Command::new("stty").arg("echo").status().map_err(|e| e.to_string())?;
+    drop(guard);
     println!();
-    if !restore.success() {
-        return Err("cannot restore terminal echo".into());
-    }
-    read.map_err(|e| e.to_string())?;
-    Ok(input.trim_end_matches(['\n', '\r']).to_string())
+    String::from_utf8(buf).map_err(|_| "password is not valid UTF-8".into())
 }
 
 // Terminal-friendly menus until the full interactive TUI is implemented.
@@ -408,7 +448,7 @@ fn run_install_backend(plan: &InstallPlan, password: &str) -> Result<(), String>
     }
     drop(tx);
     let stages = ["Prepare & verify", "Partition & format", "Install packages",
-        "Configure system", "Configure Snapper", "Install EFI bootloader", "Complete"];
+        "Configure Snapper", "Configure system", "Install EFI bootloader", "Complete"];
     let mut stage = 0_usize;
     let mut tick = 0_usize;
     let mut tail = std::collections::VecDeque::new();
