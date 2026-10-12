@@ -94,7 +94,11 @@ test -x /usr/local/bin/kova-osd
 /usr/local/bin/kova-osd --help | /usr/bin/grep -q 'kova-osd volume'
 /usr/bin/grep -q '"mako"' /etc/skel/.config/anvil/config.toml
 for cmd in mako notify-send wpctl brightnessctl; do command -v "$cmd" >/dev/null; done
-test -n "$(find /var/lib/kova/wallpapers/files -type f -name '*.png' -print -quit)"
+# Images are randomly selected at ISO build time, and may all be JPEG.
+test "$(find /var/lib/kova/wallpapers/files -maxdepth 1 -type f \
+  \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) | wc -l)" -eq 3
+test ! -e /var/lib/kova/wallpapers/.git
+test ! -e /var/lib/kova/wallpapers/cache
 /usr/local/bin/kova news --summary >/dev/null
 log "KOVA_CI_STEP installer-preview passed"
 
