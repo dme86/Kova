@@ -31,6 +31,8 @@ jobs:
         run: bash tests/test-mirrors.sh
       - name: Test offline ISO size report generator
         run: bash tests/test-size-report.sh
+      - name: Check live ISO package policy for Neovim
+        run: bash tests/test-live-package-policy.sh
       - name: Ensure production ISO excludes CI smoke infrastructure
         run: bash tests/test-iso-flavors.sh
       - name: Test production boot serial detection against real QEMU logs

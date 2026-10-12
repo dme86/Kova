@@ -98,7 +98,6 @@ fzf
 lazygit
 tmux
 npm
-go
 tree-sitter-cli
 unzip
 base-devel
