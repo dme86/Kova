@@ -21,6 +21,6 @@ POLICY
 )
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
-awk -v policy="$policy" '{ print; /^\[options\][[:space:]]*$/ && !done {print policy; done=1} }' "$conf" > "$tmp"
+awk -v policy="$policy" '{ print; if ($0 ~ /^\[options\][[:space:]]*$/ && !done) { print policy; done=1 } }' "$conf" > "$tmp"
 cat "$tmp" > "$conf"
 echo "Kova live ISO: retain DE/EN locale+man, exclude other translations and nonessential docs"
