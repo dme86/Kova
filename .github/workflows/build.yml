@@ -189,10 +189,10 @@ jobs:
           retention-days: 2
 
   boot:
-    name: QEMU live system smoke tests
+    name: QEMU live system smoke tests (BIOS and UEFI)
     needs: build
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Retrieve ISO from build
@@ -212,11 +212,13 @@ jobs:
       - name: Install QEMU
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends qemu-system-x86
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 ovmf
       - name: Boot instrumented CI guest and run full smoke tests
         run: KOVA_TEST_MODE=ci KOVA_TEST_ISO_DIR="$PWD/out-ci" bash scripts/test-iso.sh
-      - name: Boot the exact clean production artifact separately
-        run: KOVA_TEST_MODE=production KOVA_TEST_ISO_DIR="$PWD/out" bash scripts/test-iso.sh
+      - name: Boot exact production ISO using BIOS
+        run: KOVA_TEST_MODE=production KOVA_TEST_FIRMWARE=bios KOVA_TEST_ISO_DIR="$PWD/out" bash scripts/test-iso.sh
+      - name: Boot exact production ISO using OVMF/UEFI
+        run: KOVA_TEST_MODE=production KOVA_TEST_FIRMWARE=uefi KOVA_TEST_ISO_DIR="$PWD/out" bash scripts/test-iso.sh
       - name: Upload QEMU logs
         if: always()
         uses: actions/upload-artifact@v4

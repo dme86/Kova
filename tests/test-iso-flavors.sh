@@ -14,7 +14,14 @@ assert 'iso_name="kova-ci"' in build
 assert 'KOVA_CI_IMAGE=1 KOVA_OUT_DIR=/repo/out-ci' in pipeline
 assert 'name: kova-ci-iso' in pipeline
 assert 'name: kova-iso' in pipeline
-assert 'Boot the exact clean production artifact separately' in pipeline
+assert 'Boot exact production ISO using BIOS' in pipeline
+assert 'Boot exact production ISO using OVMF/UEFI' in pipeline
+assert 'KOVA_TEST_FIRMWARE=uefi' in pipeline
+assert 'ovmf' in pipeline
+assert 'console=ttyS0,115200n8' in build
+assert 'KOVA_TEST_FIRMWARE:-bios' in test
+assert 'OVMF_CODE_4M.fd' in test
+
 assert 'KOVA_TEST_MODE=production' in pipeline
 assert 'KOVA_TEST_MODE=ci' in pipeline
 assert 'KOVA_TEST_MODE:-production' in test
