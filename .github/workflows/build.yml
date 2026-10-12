@@ -35,6 +35,8 @@ jobs:
         run: bash tests/test-live-content-policy.sh
       - name: Test offline wallpaper pool and five-boot rotation
         run: bash tests/test-wallpaper-pool.sh
+      - name: Validate Kova Fastfetch and Neofetch branding
+        run: bash tests/test-fetch-branding.sh
       - name: Check live ISO package policy for Neovim
         run: bash tests/test-live-package-policy.sh
       - name: Ensure production ISO excludes CI smoke infrastructure

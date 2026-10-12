@@ -102,7 +102,7 @@ pacstrap -K "$target" \
   base linux linux-firmware mkinitcpio btrfs-progs snapper \
   sudo fish git curl jq rate-mirrors neovim networkmanager \
   eza bat fd ripgrep bottom dust procs dysk sd uutils-coreutils \
-  zoxide fzf tmux starship wayland mesa libinput seatd \
+  zoxide fzf tmux starship fastfetch wayland mesa libinput seatd \
   greetd greetd-tuigreet swaybg mako libnotify pipewire pipewire-alsa pipewire-pulse wireplumber brightnessctl alacritty librewolf xdg-utils ttf-jetbrains-mono ttf-nerd-fonts-symbols-mono adwaita-icon-theme xorg-xwayland wl-clipboard \
   zram-generator dosfstools efibootmgr
 # Snapper create-config requires .snapshots to be unmounted.
@@ -144,6 +144,13 @@ install -Dm644 /etc/xdg/mimeapps.list "$target/etc/xdg/mimeapps.list"
 install -Dm644 /etc/fonts/conf.d/70-kova-monospace.conf "$target/etc/fonts/conf.d/70-kova-monospace.conf"
 install -Dm644 /etc/os-release "$target/etc/os-release"
 install -Dm644 /etc/issue "$target/etc/issue"
+# Copy central Kova fetch logos and the system-wide Fastfetch configuration.
+for logo in /usr/share/kova/logo-fastfetch.txt /usr/share/kova/logo-fastfetch-mini.txt \
+            /usr/share/kova/logo-neofetch.txt /usr/share/kova/logo-ascii.txt; do
+  [[ -f "$logo" ]] || { echo "Missing Kova terminal branding: $logo" >&2; exit 1; }
+  install -Dm644 "$logo" "$target$logo"
+done
+install -Dm644 /etc/xdg/fastfetch/config.jsonc "$target/etc/xdg/fastfetch/config.jsonc"
 install -Dm644 /usr/local/share/kova/anvil-version "$target/usr/local/share/kova/anvil-version"
 install -Dm644 /usr/share/wayland-sessions/anvil.desktop "$target/usr/share/wayland-sessions/anvil.desktop"
 mkdir -p "$target/etc/skel/.config" "$target/etc/fish/conf.d" "$target/var/lib/kova"
