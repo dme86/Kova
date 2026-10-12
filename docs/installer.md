@@ -10,14 +10,29 @@ Kova is opinionated about the installed Linux system, **not** about
 destroying an existing operating system. The first implementation will
 support installation to an empty, dedicated disk; shared-disk dual boot is
 a later, separately tested installer mode.
-The installer uses a dependency-light native Rust CLI with numbered,
-searchable, offline selection lists for UTF-8 locale, console keyboard map,
-and IANA timezone. It deliberately avoids large graphical installers.
-The default `kova install` first previews the installation and asks whether
-to proceed **in the same invocation**. Saying no leaves all disks unchanged.
-`kova install --dry-run` is read-only, and `kova install --apply` directly
-previews the plan and requests the exact destructive confirmation. You can
-enter `b` to return to earlier steps and `/Berlin` to filter timezone entries.
+The installer defaults to a small **keyboard-driven TTY UI**, without
+requiring Wayland or Anvil. Its stages are **Disk → User/Hostname → Language
+→ Keyboard → Timezone → Review → exact ERASE confirmation → Install → Complete**.
+Search locales, keymaps and timezones as you type, including `deutsch` or
+`german` for German language names. Navigate with arrow keys, PageUp/
+PageDown, Home/End, Enter and Esc (back); Ctrl+C cancels and restores the
+terminal. Inactive installation media, mounted devices, read-only, USB and
+removable disks are visibly identified as forbidden, not silently selectable.
+The review screen does **not** erase anything: the user must still type the
+full `ERASE /dev/...` string *and* enter a password twice. The backend
+revalidates the original major:minor block-device identity immediately
+before destructive operations.
+
+Use `kova install --no-tui` or a `TERM=dumb` console for the accessible
+line-oriented fallback, which retains `/de`, `/search de`, paging and
+back navigation. `kova install --dry-run --demo` is a noninteractive,
+read-only preview. `kova install --tui-demo` exercises the interactive
+wizard with a synthetic disk and can **never** invoke the erase backend.
+During a real install, numbered **phase names** and continuously streamed
+output identify pacstrap, Snapper, system setup and EFI steps (no fake
+completion percentage). On failure a permission-restricted log remains at
+`/tmp/kova-install-<pid>-<timestamp>.log`; inspect the logs and existing
+mounts before retrying. The installer does not automatically repeat writes.
 Values passed as CLI flags are still validated against local catalogs.
 The installer does not require internet to read these catalogs. The Rust frontend
 invokes tested Arch tools (`sgdisk`, `mkfs`, `pacstrap`, `genfstab`,
