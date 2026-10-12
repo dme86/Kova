@@ -26,8 +26,9 @@ assert 'KOVA_TEST_MODE=production' in pipeline
 assert 'KOVA_TEST_MODE=ci' in pipeline
 assert 'KOVA_TEST_MODE:-production' in test
 assert 'KOVA_CI_PASS' in test
-assert 'unit=kova-live-user.*res=success' in test
-assert 'kova login:' in test
+assert 'scripts/assert-production-boot.sh' in test
+assert 'acct="kova"' in Path('scripts/assert-production-boot.sh').read_text()
+assert 'kova login:' in Path('scripts/assert-production-boot.sh').read_text()
 assert "gh release create" in pipeline
 assert 'out/*.iso out/SHA256SUMS' in pipeline
 assert 'out-ci/*.iso' not in pipeline.split("  release:", 1)[1]
