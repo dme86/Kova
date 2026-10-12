@@ -1,7 +1,13 @@
 //! Kova's single user-facing Rust executable.
 use kova_installer::{choices, demo_plan, discover_disks, Disk, InstallPlan};
 mod wallpapers;
-use std::io::{self, IsTerminal, Write};
+mod tui;
+use std::io::{self, BufRead, IsTerminal, Read, Write};
+use std::fs::OpenOptions;
+use std::os::unix::fs::OpenOptionsExt;
+use std::sync::mpsc;
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::process::{Command, Stdio};
 
 fn usage() {
@@ -11,6 +17,7 @@ fn usage() {
          kova install --list-disks    Read-only disk discovery\n\
          kova install --dry-run --demo  Preview a synthetic disk (CI)\n\
          kova install --apply         Show plan, then request ERASE confirmation (UEFI)\n\
+         kova install --no-tui       Accessible line-based wizard instead of keyboard TUI\n\
          kova news                   Relevant Arch Linux announcements\n\
          kova news --summary         Fast cached login notification\n\
          kova news read N            Read and acknowledge announcement N\n\
@@ -211,6 +218,7 @@ fn install(args: &[String]) -> Result<(), String> {
     let mut apply = false;
     let mut dry_run = false;
     let mut list_disks = false;
+    let mut no_tui = false;
     let (mut disk, mut user, mut host, mut locale, mut keyboard, mut timezone) =
         (None, None, None, None, None, None);
     let mut iter = args.iter();
@@ -220,6 +228,7 @@ fn install(args: &[String]) -> Result<(), String> {
             "--apply" => { apply = true; continue; }
             "--dry-run" => { dry_run = true; continue; }
             "--list-disks" => { list_disks = true; continue; }
+            "--no-tui" => { no_tui = true; continue; }
             "--disk" => &mut disk,
             "--username" => &mut user,
             "--hostname" => &mut host,
@@ -245,9 +254,14 @@ fn install(args: &[String]) -> Result<(), String> {
     if apply && !io::stdin().is_terminal() {
         return Err("--apply REQUIRES an interactive terminal; unattended erasure is disabled".into());
     }
+    let interactive = io::stdin().is_terminal() && !dry_run;
+    let use_tui = interactive && !no_tui && tui::supported();
     let selected = if let Some(path) = disk {
         disks.iter().find(|d| d.path == path).cloned()
             .ok_or_else(|| format!("{path} is not present in lsblk"))?
+    } else if use_tui {
+        disks.iter().find(|d| d.eligible()).cloned()
+            .ok_or("No eligible disk for installation; inspect kova install --list-disks")?
     } else {
         if !io::stdin().is_terminal() {
             return Err("provide --disk or use --dry-run --demo".into());
@@ -259,7 +273,6 @@ fn install(args: &[String]) -> Result<(), String> {
         disks.get(index.checked_sub(1).ok_or("invalid selection")?)
             .cloned().ok_or("invalid disk selection")?
     };
-    let interactive = io::stdin().is_terminal() && !dry_run;
     let mut plan = InstallPlan {
         disk: selected,
         username: user.clone().unwrap_or_else(|| "user".into()),
@@ -272,7 +285,14 @@ fn install(args: &[String]) -> Result<(), String> {
     let locales = choices::locales()?;
     let keyboards = choices::keymaps()?;
     let timezones = choices::timezones()?;
-    if interactive {
+    if interactive && use_tui {
+        let completed = tui::wizard(&disks, plan, &locales, &keyboards, &timezones, apply)?;
+        let Some(wizard_plan) = completed else {
+            println!("Kova installer cancelled. No disk changes made.");
+            return Ok(());
+        };
+        plan = wizard_plan;
+    } else if interactive {
         let mut stage: usize = 0;
         while stage < 5 {
             let selected: Option<String> = match stage {
@@ -308,7 +328,7 @@ fn install(args: &[String]) -> Result<(), String> {
     choices::validate_choice("keyboard", &plan.keyboard, &keyboards)?;
     choices::validate_choice("timezone", &plan.timezone, &timezones)?;
     println!("{}", plan.preview()?);
-    if !apply {
+    if !apply && !use_tui {
         if !interactive {
             return Ok(());
         }
@@ -337,6 +357,25 @@ fn install(args: &[String]) -> Result<(), String> {
     if identity.is_empty() || !identity.contains(':') {
         return Err("invalid target disk identity".into());
     }
+    run_install_backend(&plan, &password)?;
+    Ok(())
+}
+
+
+fn run_install_backend(plan: &InstallPlan, password: &str) -> Result<(), String> {
+    let nonce = SystemTime::now().duration_since(UNIX_EPOCH)
+        .map_err(|e| e.to_string())?.as_secs();
+    let path = format!("/tmp/kova-install-{}-{nonce}.log", std::process::id());
+    let mut log = OpenOptions::new().create_new(true).write(true).mode(0o600)
+        .open(&path).map_err(|e| format!("cannot create installer log: {e}"))?;
+    let _ = writeln!(log, "Kova installer log (non-secret output only)\nTarget: {}", plan.disk.path);
+    let output = Command::new("lsblk").args(["-dn", "-o", "MAJ:MIN", "--"])
+        .arg(&plan.disk.path).output().map_err(|e| e.to_string())?;
+    if !output.status.success() { return Err("cannot verify target disk identity".into()); }
+    let identity = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if identity.is_empty() || !identity.contains(':') {
+        return Err("invalid target disk identity".into());
+    }
     let mut child = Command::new("sudo").arg("-n")
         .arg("/usr/local/lib/kova/install-system")
         .arg(&plan.disk.path)
@@ -347,15 +386,70 @@ fn install(args: &[String]) -> Result<(), String> {
         .arg(&plan.keyboard)
         .arg(&plan.timezone)
         .arg(format!("ERASE:{identity}"))
-        .stdin(Stdio::piped()).spawn().map_err(|e| format!("installer launch failed: {e}"))?;
-    let mut input = child.stdin.take().ok_or("installer has no stdin")?;
-    input.write_all(format!("{password}\n").as_bytes()).map_err(|e| e.to_string())?;
-    drop(input);
-    let result = child.wait().map_err(|e| e.to_string())?;
-    if !result.success() {
-        return Err(format!("installation failed (exit status: {result}); inspect preceding log"));
+        .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped())
+        .spawn().map_err(|e| format!("installer launch failed: {e}"))?;
+    // Password goes directly to backend stdin; never to log or argv.
+    {
+        let mut input = child.stdin.take().ok_or("installer has no stdin")?;
+        input.write_all(format!("{password}\n").as_bytes()).map_err(|e| e.to_string())?;
     }
-    Ok(())
+    let (tx, rx) = mpsc::channel::<String>();
+    for reader in [child.stdout.take(), child.stderr.take()] {
+        let reader = reader.ok_or("installer output unavailable")?;
+        let sender = tx.clone();
+        thread::spawn(move || {
+            for line in io::BufReader::new(reader).lines() {
+                match line {
+                    Ok(line) => { if sender.send(line).is_err() { break; } }
+                    Err(_) => break,
+                }
+            }
+        });
+    }
+    drop(tx);
+    let stages = ["Prepare & verify", "Partition & format", "Install packages",
+        "Configure system", "Configure Snapper", "Install EFI bootloader", "Complete"];
+    let mut stage = 0_usize;
+    let mut tick = 0_usize;
+    let mut tail = std::collections::VecDeque::new();
+    println!("Installation started. Logs: {path}");
+    loop {
+        match rx.recv_timeout(Duration::from_millis(300)) {
+            Ok(line) => {
+                print!("\r\x1b[2K");
+                if let Some(marker) = line.strip_prefix("KOVA_PHASE:") {
+                    let mut parts = marker.splitn(2, ':');
+                    if let Some(n) = parts.next().and_then(|v| v.parse::<usize>().ok()) {
+                        stage = n.min(stages.len() - 1);
+                    }
+                    println!("  [{}/{}] {}", stage + 1, stages.len(), stages[stage]);
+                } else {
+                    println!("  {}", line);
+                    tail.push_back(line.clone());
+                    if tail.len() > 12 { tail.pop_front(); }
+                }
+                writeln!(log, "{line}").map_err(|e| e.to_string())?;
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                let wheel = ['|', '/', '-', '\\'];
+                print!("\r\x1b[2K  [{}] {}  (activity, no estimated %)",
+                    wheel[tick % wheel.len()], stages[stage]);
+                let _ = io::stdout().flush();
+                tick += 1;
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+    }
+    print!("\r\x1b[2K");
+    let status = child.wait().map_err(|e| e.to_string())?;
+    if status.success() {
+        println!("[COMPLETE] Kova installed. Remove ISO and reboot.\nInstall log: {path}");
+        Ok(())
+    } else {
+        eprintln!("\nInstallation failed ({status}). Last log lines:");
+        for line in &tail { eprintln!("  {line}"); }
+        Err(format!("Installation failed; log saved to {path}. Check target mounts before retrying; do not rerun blindly."))
+    }
 }
 
 fn run() -> Result<(), String> {
