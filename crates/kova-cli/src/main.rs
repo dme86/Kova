@@ -62,52 +62,78 @@ fn secret(prompt: &str) -> Result<String, String> {
     Ok(input.trim_end_matches(['\n', '\r']).to_string())
 }
 
-// Numbered, searchable menus: no GUI or extra terminal dependency needed.
+// Terminal-friendly menus until the full interactive TUI is implemented.
+// All results can be reached, even when the terminal only displays 12 at once.
+const CHOICES_PER_PAGE: usize = 12;
+
+fn search_query(response: &str) -> Option<&str> {
+    let input = response.trim();
+    if input == "/search" {
+        return Some("");
+    }
+    if let Some(term) = input.strip_prefix("/search ") {
+        return Some(term.trim());
+    }
+    input.strip_prefix('/').map(str::trim)
+}
+
 // Returning None navigates to the previous field.
 fn select_option(label: &str, options: &[String], default: &str) -> Result<Option<String>, String> {
     if options.is_empty() {
         return Err(format!("no {label} options available; cannot continue"));
     }
     let mut filter = String::new();
+    let mut page = 0_usize;
     loop {
-        let needle = filter.to_ascii_lowercase();
+        let needle = filter.to_lowercase();
         let mut matches: Vec<&String> = options.iter()
-            .filter(|v| v.to_ascii_lowercase().contains(needle.as_str()))
+            .filter(|v| v.to_lowercase().contains(needle.as_str()))
             .collect();
-        // Offer the current value first, then a small list; avoid flooding tty/serial.
+        // Prioritize the current value on page 1, if it matches the search.
         if let Some(idx) = matches.iter().position(|v| v.as_str() == default) {
             let current = matches.remove(idx);
             matches.insert(0, current);
         }
-        println!("\n{label}: {} choices{} (current: {default})",
-            matches.len(), if filter.is_empty() { "" } else { " matching filter" });
-        for (i, value) in matches.iter().take(12).enumerate() {
-            println!("  {:>2}. {}", i + 1, value);
+        let page_count = matches.len().max(1).div_ceil(CHOICES_PER_PAGE);
+        page = page.min(page_count - 1);
+        let offset = page * CHOICES_PER_PAGE;
+        println!("\n{label} — {} result(s), page {}/{} | selected: {default}",
+            matches.len(), page + 1, page_count);
+        for (index, value) in matches.iter().skip(offset).take(CHOICES_PER_PAGE).enumerate() {
+            println!("  {:>2}. {}", index + 1, value);
         }
-        if matches.len() > 12 {
-            println!("  ... type /text to filter the list");
+        if matches.is_empty() {
+            println!("No matches. Type / to clear the filter, or a new search term.");
         }
-        let response = ask_exact("Choose number, /search, exact name, Enter=current, b=back")?;
+        println!("Search: type de or /de (also /search de) | n=next, p=previous, b=back, Enter=current");
+        let response = ask_exact("Select a number on this page, an exact name, or a search term")?;
         if response == "b" {
             return Ok(None);
-        }
-        if response.is_empty() {
+        } else if response == "n" {
+            if page + 1 < page_count { page += 1; } else { println!("Already on the last page."); }
+        } else if response == "p" {
+            if page > 0 { page -= 1; } else { println!("Already on the first page."); }
+        } else if response.is_empty() {
             if options.iter().any(|v| v == default) {
                 return Ok(Some(default.to_owned()));
             }
-            println!("Current value is not available; choose from the list.");
-        } else if let Some(needle) = response.strip_prefix('/') {
-            filter = needle.to_owned();
+            println!("Current value is unavailable; choose one of the listed values.");
+        } else if let Some(term) = search_query(&response) {
+            filter = term.to_owned();
+            page = 0;
         } else if let Ok(index) = response.parse::<usize>() {
-            if let Some(value) = index.checked_sub(1).and_then(|i| matches.get(i)).filter(|_| index <= 12) {
+            if let Some(value) = index.checked_sub(1)
+                .filter(|&i| i < CHOICES_PER_PAGE)
+                .and_then(|i| matches.get(offset + i))
+            {
                 return Ok(Some((**value).clone()));
             }
-            println!("Invalid selection.");
+            println!("Invalid number for this page.");
         } else if options.iter().any(|v| v == &response) {
             return Ok(Some(response));
         } else {
             filter = response;
-            println!("Searching for {filter:?}; enter a number to select.");
+            page = 0;
         }
     }
 }
@@ -140,6 +166,22 @@ fn ask_password() -> Result<String, String> {
 #[cfg(test)]
 mod ui_tests {
     use super::*;
+    #[test]
+    fn locale_search_accepts_help_syntax_and_short_form() {
+        assert_eq!(search_query("/de"), Some("de"));
+        assert_eq!(search_query("/search de"), Some("de"));
+        assert_eq!(search_query("/search  Europe/Berlin"), Some("Europe/Berlin"));
+        assert_eq!(search_query("/search"), Some(""));
+        assert_eq!(search_query("/"), Some(""));
+        assert_eq!(search_query("de_DE.UTF-8"), None);
+    }
+    #[test]
+    fn paging_covers_all_options() {
+        let count = 152_usize;
+        let pages = count.max(1).div_ceil(CHOICES_PER_PAGE);
+        assert_eq!(pages, 13);
+        assert_eq!((0..count).skip((pages - 1) * CHOICES_PER_PAGE).take(CHOICES_PER_PAGE).count(), 8);
+    }
     #[test]
     fn short_passwords_allowed_with_safe_backend_constraints() {
         assert!(valid_password("123"));
