@@ -442,8 +442,10 @@ fn run_install_backend(plan: &InstallPlan, password: &str) -> Result<(), String>
         input.write_all(format!("{password}\n").as_bytes()).map_err(|e| e.to_string())?;
     }
     let (tx, rx) = mpsc::channel::<String>();
-    for reader in [child.stdout.take(), child.stderr.take()] {
-        let reader = reader.ok_or("installer output unavailable")?;
+    let stdout = child.stdout.take().ok_or("installer stdout unavailable")?;
+    let stderr = child.stderr.take().ok_or("installer stderr unavailable")?;
+    let readers: Vec<Box<dyn Read + Send>> = vec![Box::new(stdout), Box::new(stderr)];
+    for reader in readers {
         let sender = tx.clone();
         thread::spawn(move || {
             for line in io::BufReader::new(reader).lines() {
