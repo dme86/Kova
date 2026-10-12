@@ -29,6 +29,16 @@ root="$work/x86_64/airootfs"
     printf -- '- Rootfs uncompressed directory size: %s bytes\n\n' "$(du -sb "$root" | awk '{print $1}')"
     printf '### Largest root filesystem directories\n\n'
     du -h -d 2 "$root/usr" "$root/var" "$root/opt" 2>/dev/null | sort -hr | head -n 30 || true
+    printf '\n### Localization and documentation remaining in the live image\n\n'
+    printf '| Directory | Bytes | MiB |\n| --- | ---: | ---: |\n'
+    for relative in usr/share/locale usr/share/man usr/share/doc usr/share/i18n usr/share/licenses; do
+      if [[ -d "$root/$relative" ]]; then
+        bytes=$(du -sb "$root/$relative" | cut -f1)
+        printf '| /%s | %s | %s |\n' "$relative" "$bytes" "$((bytes / 1048576))"
+      else
+        printf '| /%s | absent | 0 |\n' "$relative"
+      fi
+    done
     printf '\n### Wallpapers\n\n'
     wallpapers="$root/var/lib/kova/wallpapers"
     if [[ -d "$wallpapers/files" ]]; then
