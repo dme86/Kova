@@ -197,7 +197,15 @@ fn has_pool(root: &Path) -> bool {
 
 fn refresh(root: &Path) -> Result<(), String> {
     recover_swap(root)?;
-    let selected = select_five(catalog()?)?;
+    // Prefer fresh images: never select one of the three ISO fallbacks,
+    // so a populated cache offers eight distinct motifs rather than five.
+    let images = catalog()?.into_iter()
+        .filter(|image| !root.join("files").join(&image.name).exists())
+        .collect::<Vec<_>>();
+    if images.len() < POOL_SIZE {
+        return Err("catalog contains fewer than five images outside the ISO seeds".into());
+    }
+    let selected = select_five(images)?;
     let nonce = SystemTime::now().duration_since(UNIX_EPOCH)
         .map_err(|e| e.to_string())?.as_nanos();
     let stage_path = root.join(format!(".download-{}-{nonce}", std::process::id()));
@@ -261,7 +269,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
     match args.first().map(String::as_str) {
         Some("status") if args.len() == 1 => {
             println!("Kova wallpaper pool: {}", root.display());
-            println!("3 ISO fallback images (if provided), {} cached images",
+            let seeds = fs::read_dir(root.join("files")).ok().into_iter().flatten()
+                .filter_map(Result::ok).filter(|e| {
+                    e.file_type().is_ok_and(|kind| kind.is_file()) &&
+                        safe_name(&e.file_name().to_string_lossy())
+                }).count();
+            println!("{seeds} offline fallback images, {} cached images",
                 if has_pool(&root) { POOL_SIZE } else { 0 });
             println!("Boots since refresh: {}", read_count(&root));
             Ok(())
