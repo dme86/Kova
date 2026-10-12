@@ -71,8 +71,10 @@ trap cleanup EXIT
 for cmd in pacstrap arch-chroot sgdisk partprobe mkfs.btrfs mkfs.fat genfstab; do
   command -v "$cmd" >/dev/null || { echo "Missing installer tool $cmd" >&2; exit 1; }
 done
+echo "KOVA_PHASE:0:Preflight checks"
 curl -fLsS --max-time 15 --head https://archlinux.org/ >/dev/null ||
  { echo "No network for pacstrap; refusing to erase disk" >&2; exit 1; }
+echo "KOVA_PHASE:1:Partition and format disk"
 echo "ERASING $disk — creating GPT and Kova Btrfs filesystem"
 sgdisk --zap-all "$disk"
 sgdisk --clear --new=1:0:+1G --typecode=1:ef00 --change-name=1:KOVA-EFI "$disk"
@@ -98,6 +100,7 @@ mount "$efi" "$target/boot"
 mkdir -p "$target/etc"
 printf 'KEYMAP=%s\n' "$keyboard" > "$target/etc/vconsole.conf"
 # Signed Arch repositories; no ephemeral CI artifacts for installed-kernel updates.
+echo "KOVA_PHASE:2:Install signed Arch packages"
 pacstrap -K "$target" \
   base linux linux-firmware mkinitcpio btrfs-progs snapper \
   sudo fish git curl jq rate-mirrors neovim networkmanager \
@@ -109,10 +112,12 @@ pacstrap -K "$target" \
 # arch-chroot shares /run with the live environment. Normal snapper may ask
 # the live host's snapperd via DBus and inspect the wrong (non-Btrfs) root.
 # Direct in-process Snapper mode was verified on the failing QEMU system.
+echo "KOVA_PHASE:3:Configure Snapper and Btrfs"
 arch-chroot "$target" snapper --no-dbus -c root create-config /
 btrfs subvolume delete "$target/.snapshots"
 mkdir -p "$target/.snapshots"
 mount -o subvol=@snapshots,compress=zstd:3,noatime "$root" "$target/.snapshots"
+echo "KOVA_PHASE:4:Configure system, users, and services"
 genfstab -U "$target" > "$target/etc/fstab"
 ln -sfn "/usr/share/zoneinfo/$timezone" "$target/etc/localtime"
 arch-chroot "$target" hwclock --systohc
@@ -167,9 +172,11 @@ arch-chroot "$target" snapper --no-dbus -c root create --description 'Kova first
 # before root Snapper exists, aborting the whole installation. Install only
 # after the root config, @snapshots mount and baseline snapshot are valid.
 arch-chroot "$target" pacman -S --noconfirm --needed snap-pac
+echo "KOVA_PHASE:5:Install UEFI bootloader"
 arch-chroot "$target" bootctl --esp-path=/boot --no-variables install
 uuid=$(blkid -s UUID -o value "$root")
 mkdir -p "$target/boot/loader/entries"
 printf 'default kova.conf\ntimeout 3\neditor no\n' > "$target/boot/loader/loader.conf"
 printf 'title Kova Linux\nlinux /vmlinuz-linux\ninitrd /initramfs-linux.img\noptions root=UUID=%s rw rootflags=subvol=@\n' "$uuid" > "$target/boot/loader/entries/kova.conf"
+echo "KOVA_PHASE:6:Complete"
 echo "Kova installed. Remove installation ISO and reboot."
