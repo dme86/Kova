@@ -49,7 +49,7 @@ root="$work/x86_64/airootfs"
       tmp=$(mktemp)
       for desc in "$db"/*/desc; do
         [[ -f "$desc" ]] || continue
-        awk '/^%NAME%$/ {getline; name=$0} /^%ISIZE%$/ {getline; bytes=$0} END {if (name != "") printf "%.0f\t%s\n", bytes+0, name}' "$desc"
+        awk '/^%NAME%$/ {getline; name=$0} /^%SIZE%$/ {getline; bytes=$0} END {if (name != "") printf "%.0f\t%s\n", bytes+0, name}' "$desc"
       done | sort -nr > "$tmp"
       head -n 30 "$tmp" | awk -F '\t' '{printf "%.1f MiB\t%s\n", $1/1048576, $2}'
       rm -f "$tmp"
