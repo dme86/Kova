@@ -114,6 +114,8 @@ jobs:
           cargo build --locked --release --package kova-cli
           target/release/kova --help
           target/release/kova install --dry-run --demo | grep -q 'NO PARTITIONS OR FILES WERE MODIFIED'
+      - name: Test keyboard TUI in actual pseudoterminals (no disk writes)
+        run: python3 tests/test-installer-tui-pty.py target/release/kova
       - name: Publish binary for ISO build
         uses: actions/upload-artifact@v4
         with:

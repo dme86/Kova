@@ -11,6 +11,8 @@ pub struct Disk {
     pub path: String,
     pub size_bytes: u64,
     pub model: String,
+    pub fs_type: String,
+    pub transport: String,
     pub read_only: bool,
     pub removable: bool,
     pub mounted: bool,
@@ -18,12 +20,16 @@ pub struct Disk {
 
 impl Disk {
     pub fn eligible(&self) -> bool {
-        !self.read_only && !self.mounted && self.size_bytes >= MIN_DISK_BYTES
+        !self.read_only && !self.removable && !self.mounted &&
+        self.transport != "usb" && self.fs_type != "iso9660" &&
+        self.size_bytes >= MIN_DISK_BYTES
     }
 
     pub fn status(&self) -> &'static str {
         if self.read_only {
             "read-only"
+        } else if self.removable || self.transport == "usb" || self.fs_type == "iso9660" {
+            "installation media / removable: forbidden"
         } else if self.mounted {
             "in use / mounted"
         } else if self.size_bytes < MIN_DISK_BYTES {
@@ -79,6 +85,8 @@ pub fn parse_disks(output: &str) -> Result<Vec<Disk>, String> {
             path,
             size_bytes,
             model: model.trim().to_string(),
+            fs_type: field(line, "FSTYPE").unwrap_or_default(),
+            transport: field(line, "TRAN").unwrap_or_default(),
             read_only: field(line, "RO").as_deref() == Some("1"),
             removable: field(line, "RM").as_deref() == Some("1"),
             mounted: false,
@@ -91,7 +99,7 @@ pub fn parse_disks(output: &str) -> Result<Vec<Disk>, String> {
 /// This only reads system state; it never writes partition tables.
 pub fn discover_disks() -> Result<Vec<Disk>, String> {
     let output = Command::new("lsblk")
-        .args(["-dn", "-b", "-P", "-o", "PATH,SIZE,TYPE,MODEL,RO,RM"])
+        .args(["-dn", "-b", "-P", "-o", "PATH,SIZE,TYPE,MODEL,RO,RM,FSTYPE,TRAN"])
         .output()
         .map_err(|e| format!("failed to run lsblk: {e}"))?;
     if !output.status.success() {
@@ -216,6 +224,8 @@ pub fn demo_plan() -> InstallPlan {
             path: "/dev/kova-demo".into(),
             size_bytes: 128 * 1024 * 1024 * 1024,
             model: "Virtual disk (example only)".into(),
+            fs_type: String::new(),
+            transport: String::new(),
             read_only: false,
             removable: false,
             mounted: false,
@@ -254,6 +264,15 @@ mod tests {
         assert!(p.validate().is_err());
         p.disk.read_only = false;
         p.disk.size_bytes = MIN_DISK_BYTES - 1;
+        assert!(p.validate().is_err());
+        p.disk.size_bytes = MIN_DISK_BYTES;
+        p.disk.removable = true;
+        assert!(p.validate().is_err());
+        p.disk.removable = false;
+        p.disk.transport = "usb".into();
+        assert!(p.validate().is_err());
+        p.disk.transport.clear();
+        p.disk.fs_type = "iso9660".into();
         assert!(p.validate().is_err());
     }
 
