@@ -11,6 +11,8 @@ cp -a /usr/share/archiso/configs/releng/. "$PROFILE/"
   exit 1
 }
 cp -a "$ROOT/config/airootfs/." "$PROFILE/airootfs/"
+# Keep build-only package extraction rules out of the installed OS.
+bash "$ROOT/scripts/configure-live-content.sh" "$PROFILE"
 # The Archiso releng MOTD contains upstream Arch install instructions.
 # Explicitly override it with concise Kova live help.
 grep -Fq "Super + Enter" "$PROFILE/airootfs/etc/motd"
