@@ -33,6 +33,8 @@ jobs:
         run: bash tests/test-size-report.sh
       - name: Ensure production ISO excludes CI smoke infrastructure
         run: bash tests/test-iso-flavors.sh
+      - name: Test production boot serial detection against real QEMU logs
+        run: bash tests/test-production-boot.sh
       - name: Check live banner and installer ordering
         run: bash tests/test-installer-static.sh
       - name: Validate Kova font and terminal settings
