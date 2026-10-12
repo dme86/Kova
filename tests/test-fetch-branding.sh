@@ -37,5 +37,10 @@ assert "fastfetch" in installer
 assert 'install -Dm644 "$logo" "$target$logo"' in installer
 assert 'install -Dm644 /etc/xdg/fastfetch/config.jsonc' in installer
 assert 'cp -a /etc/skel/.config/.' in installer
+smoke = (root / "usr/local/lib/kova/ci-smoke").read_text()
+assert 'fastfetch --show-errors --pipe false --structure os' in smoke
+assert 'branding_output=$(mktemp)' in smoke
+assert "grep -Fq '▒' \"$branding_output\"" in smoke
+assert "fastfetch --show-errors --pipe |" not in smoke, "grep -q on fastfetch pipe may SIGPIPE under pipefail"
 print("Kova fetch branding: OK")
 PY
