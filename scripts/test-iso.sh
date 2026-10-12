@@ -69,11 +69,10 @@ while (( SECONDS < DEADLINE )); do
       echo "PRODUCTION ISO BOOTED CI-ONLY TEST UNIT; refusing release!" >&2
       exit 1
     fi
-    # This verifies the actual public ISO boots to a live login (BIOS).
-    # The CI image separately runs full interactive shell/desktop assertions.
-    if grep -aq 'unit=kova-live-user.*res=success' "$SERIAL_LOG" &&
-       grep -aq 'unit=getty@tty1.*res=success' "$SERIAL_LOG" &&
-       grep -aq 'kova login:' "$SERIAL_LOG"; then
+    # The CI guest performs exhaustive checks; the production ISO must be
+    # tested unmodified using externally visible tty1 autologin evidence.
+    # Long-running systemd units don't reliably emit audit start records.
+    if bash "$ROOT/scripts/assert-production-boot.sh" "$SERIAL_LOG"; then
       echo "Unmodified production Kova ISO booted with live user and login."
       exit 0
     fi
