@@ -93,6 +93,10 @@ mount -o subvol=@home,compress=zstd:3,noatime "$root" "$target/home"
 mount -o subvol=@var_log,compress=zstd:3,noatime "$root" "$target/var/log"
 mount -o subvol=@var_cache,compress=zstd:3,noatime "$root" "$target/var/cache"
 mount "$efi" "$target/boot"
+# The first pacstrap executes mkinitcpio hooks. Provide the selected keymap
+# before installing packages so sd-vconsole embeds it without a warning.
+mkdir -p "$target/etc"
+printf 'KEYMAP=%s\n' "$keyboard" > "$target/etc/vconsole.conf"
 # Signed Arch repositories; no ephemeral CI artifacts for installed-kernel updates.
 pacstrap -K "$target" \
   base linux linux-firmware mkinitcpio btrfs-progs snapper \
@@ -102,7 +106,10 @@ pacstrap -K "$target" \
   greetd greetd-tuigreet swaybg mako libnotify pipewire pipewire-alsa pipewire-pulse wireplumber brightnessctl alacritty librewolf xdg-utils ttf-jetbrains-mono ttf-nerd-fonts-symbols-mono adwaita-icon-theme xorg-xwayland wl-clipboard \
   zram-generator dosfstools efibootmgr
 # Snapper create-config requires .snapshots to be unmounted.
-arch-chroot "$target" snapper -c root create-config /
+# arch-chroot shares /run with the live environment. Normal snapper may ask
+# the live host's snapperd via DBus and inspect the wrong (non-Btrfs) root.
+# Direct in-process Snapper mode was verified on the failing QEMU system.
+arch-chroot "$target" snapper --no-dbus -c root create-config /
 btrfs subvolume delete "$target/.snapshots"
 mkdir -p "$target/.snapshots"
 mount -o subvol=@snapshots,compress=zstd:3,noatime "$root" "$target/.snapshots"
@@ -115,6 +122,9 @@ printf '%s\n' "$hostname" > "$target/etc/hostname"
 grep -Eq "^#?$locale[[:space:]]+UTF-8" "$target/etc/locale.gen" || { echo "Unknown locale" >&2; exit 1; }
 sed -i -E "s/^#($locale[[:space:]]+UTF-8)/\1/" "$target/etc/locale.gen"
 arch-chroot "$target" locale-gen
+# Rebuild after the final keyboard/locale configuration to guarantee that
+# the installed initramfs uses the installed system's console keymap.
+arch-chroot "$target" mkinitcpio -P
 for file in /usr/local/bin/kova /usr/local/bin/anvil /usr/local/bin/anvilctl /usr/local/bin/kova-session /usr/local/bin/kova-osd; do
   install -Dm755 "$file" "$target$file"
 done
@@ -152,7 +162,7 @@ arch-chroot "$target" systemctl enable NetworkManager.service systemd-timesyncd.
   snapper-timeline.timer snapper-cleanup.timer kova-mirrors.timer \
   kova-news.timer kova-update-anvil.timer kova-update-wallpapers.timer
 arch-chroot "$target" systemctl --global enable kova-battery.timer
-arch-chroot "$target" snapper -c root create --description 'Kova first installation'
+arch-chroot "$target" snapper --no-dbus -c root create --description 'Kova first installation'
 # Installing snap-pac with initial pacstrap runs its post-transaction hook
 # before root Snapper exists, aborting the whole installation. Install only
 # after the root config, @snapshots mount and baseline snapshot are valid.
