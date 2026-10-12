@@ -33,6 +33,10 @@ jobs:
         run: bash tests/test-size-report.sh
       - name: Check live ISO package policy for Neovim
         run: bash tests/test-live-package-policy.sh
+      - name: Ensure production ISO excludes CI smoke infrastructure
+        run: bash tests/test-iso-flavors.sh
+      - name: Test production boot serial detection against real QEMU logs
+        run: bash tests/test-production-boot.sh
       - name: Check live banner and installer ordering
         run: bash tests/test-installer-static.sh
       - name: Validate Kova font and terminal settings
@@ -141,12 +145,23 @@ jobs:
               bash scripts/install-anvil.sh config/airootfs
               bash scripts/install-wallpapers.sh config/airootfs
               install -Dm755 scripts/install-system.sh config/airootfs/usr/local/lib/kova/install-system
+              # First build the exact clean public ISO, then a distinct CI-only
+              # guest image with the smoke-test systemd service injected.
               bash scripts/build.sh
+              # The production ISO and size report are already materialized;
+              # release its staging rootfs before the second build to avoid
+              # exceeding GitHub runner disk space (two >4-GiB rootfs trees).
+              rm -rf /tmp/kova-archiso-work
+              KOVA_CI_IMAGE=1 KOVA_OUT_DIR=/repo/out-ci KOVA_WORK=/tmp/kova-archiso-ci-work bash scripts/build.sh
+              rm -rf /tmp/kova-archiso-ci-work
             '
       - name: Validate outputs
         run: |
           test -n "$(find out -maxdepth 1 -name '*.iso' -print -quit)"
           (cd out && sha256sum -c SHA256SUMS)
+          (cd out-ci && sha256sum -c SHA256SUMS)
+          test "$(find out -maxdepth 1 -name '*.iso' | wc -l)" -eq 1
+          test "$(find out-ci -maxdepth 1 -name '*.iso' | wc -l)" -eq 1
       - name: Publish ISO size audit
         run: |
           test -s out/SIZE_REPORT.md
@@ -166,12 +181,20 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
+      - name: Upload instrumented CI-only ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: kova-ci-iso
+          path: out-ci/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 2
 
   boot:
-    name: QEMU live system smoke tests
+    name: QEMU live system smoke tests (BIOS and UEFI)
     needs: build
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Retrieve ISO from build
@@ -179,14 +202,25 @@ jobs:
         with:
           name: kova-iso
           path: out/
-      - name: Verify transferred ISO
-        run: (cd out && sha256sum -c SHA256SUMS)
+      - name: Retrieve CI-only guest image
+        uses: actions/download-artifact@v4
+        with:
+          name: kova-ci-iso
+          path: out-ci/
+      - name: Verify transferred ISOs
+        run: |
+          (cd out && sha256sum -c SHA256SUMS)
+          (cd out-ci && sha256sum -c SHA256SUMS)
       - name: Install QEMU
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends qemu-system-x86
-      - name: Boot Kova and run smoke tests
-        run: bash scripts/test-iso.sh
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 ovmf
+      - name: Boot instrumented CI guest and run full smoke tests
+        run: KOVA_TEST_MODE=ci KOVA_TEST_ISO_DIR="$PWD/out-ci" bash scripts/test-iso.sh
+      - name: Boot exact production ISO using BIOS
+        run: KOVA_TEST_MODE=production KOVA_TEST_FIRMWARE=bios KOVA_TEST_ISO_DIR="$PWD/out" bash scripts/test-iso.sh
+      - name: Boot exact production ISO using OVMF/UEFI
+        run: KOVA_TEST_MODE=production KOVA_TEST_FIRMWARE=uefi KOVA_TEST_ISO_DIR="$PWD/out" bash scripts/test-iso.sh
       - name: Upload QEMU logs
         if: always()
         uses: actions/upload-artifact@v4

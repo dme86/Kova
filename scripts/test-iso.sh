@@ -2,11 +2,16 @@
 set -euo pipefail
 
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-ISO=$(find "$ROOT/out" -maxdepth 1 -name '*.iso' -type f -print -quit)
+ISO_DIR=${KOVA_TEST_ISO_DIR:-"$ROOT/out"}
+MODE=${KOVA_TEST_MODE:-production}
+case "$MODE" in ci|production) ;; *) echo "KOVA_TEST_MODE must be ci or production" >&2; exit 2 ;; esac
+FIRMWARE=${KOVA_TEST_FIRMWARE:-bios}
+case "$FIRMWARE" in bios|uefi) ;; *) echo "KOVA_TEST_FIRMWARE must be bios or uefi" >&2; exit 2 ;; esac
+ISO=$(find "$ISO_DIR" -maxdepth 1 -name '*.iso' -type f -print -quit)
 [[ -n "$ISO" ]] || { echo "No Kova ISO found in out/" >&2; exit 1; }
 command -v qemu-system-x86_64 >/dev/null || { echo "QEMU is not installed" >&2; exit 1; }
 
-LOG_DIR="$ROOT/test-results"
+LOG_DIR="$ROOT/test-results/$MODE-$FIRMWARE"
 mkdir -p "$LOG_DIR"
 SERIAL_LOG="$LOG_DIR/qemu-serial.log"
 QEMU_LOG="$LOG_DIR/qemu-stderr.log"
@@ -20,12 +25,26 @@ if [[ -c /dev/kvm && -r /dev/kvm && -w /dev/kvm ]]; then
   ACCEL="kvm:tcg"
 fi
 
-echo "Booting $(basename "$ISO") with QEMU (accelerator: $ACCEL)"
+firmware_args=()
+if [[ $FIRMWARE == uefi ]]; then
+  # Ubuntu's ovmf package supplies separate readonly firmware and writable vars.
+  code=${KOVA_OVMF_CODE:-/usr/share/OVMF/OVMF_CODE_4M.fd}
+  vars=${KOVA_OVMF_VARS:-/usr/share/OVMF/OVMF_VARS_4M.fd}
+  [[ -r "$code" && -r "$vars" ]] || { echo "OVMF images missing: $code $vars" >&2; exit 1; }
+  cp "$vars" "$LOG_DIR/ovmf-vars.fd"
+  firmware_args=(
+    -drive "if=pflash,format=raw,readonly=on,file=$code"
+    -drive "if=pflash,format=raw,file=$LOG_DIR/ovmf-vars.fd"
+  )
+fi
+
+echo "Booting $(basename "$ISO") with QEMU ($FIRMWARE, accelerator: $ACCEL)"
 qemu-system-x86_64 \
   -machine "q35,accel=$ACCEL" \
   -cpu max \
   -smp 2 \
   -m 3072 \
+  "${firmware_args[@]}" \
   -boot order=d \
   -drive "file=$ISO,media=cdrom,format=raw,readonly=on" \
   -display none \
@@ -48,17 +67,36 @@ trap cleanup EXIT
 # 10 minutes is intentionally generous for software emulation (TCG).
 DEADLINE=$((SECONDS + 600))
 while (( SECONDS < DEADLINE )); do
-  if grep -q 'KOVA_CI_PASS' "$SERIAL_LOG"; then
-    echo "Kova boot and guest smoke tests passed."
-    grep 'KOVA_CI_' "$SERIAL_LOG" | tail -n 25 || true
-    exit 0
-  fi
-  if grep -q 'KOVA_CI_FAIL' "$SERIAL_LOG" ||
-     grep -q 'kova-ci-smoke.service: Failed with result' "$SERIAL_LOG"; then
-    echo "Guest smoke test failed. CI steps and last serial output:" >&2
-    grep -a 'KOVA_CI_' "$SERIAL_LOG" >&2 || true
-    tail -n 120 "$SERIAL_LOG" >&2
-    exit 1
+  if [[ $MODE == ci ]]; then
+    if grep -aq 'KOVA_CI_PASS' "$SERIAL_LOG"; then
+      echo "Kova instrumented guest smoke tests passed."
+      grep -a 'KOVA_CI_' "$SERIAL_LOG" | tail -n 25 || true
+      exit 0
+    fi
+    if grep -aq 'KOVA_CI_FAIL' "$SERIAL_LOG" ||
+       grep -aq 'kova-ci-smoke.service: Failed with result' "$SERIAL_LOG"; then
+      echo "Guest smoke test failed. CI steps and last serial output:" >&2
+      grep -a 'KOVA_CI_' "$SERIAL_LOG" >&2 || true
+      tail -n 120 "$SERIAL_LOG" >&2
+      exit 1
+    fi
+  else
+    if grep -aq 'KOVA_CI_BEGIN' "$SERIAL_LOG" || grep -aq 'unit=kova-ci-smoke' "$SERIAL_LOG"; then
+      echo "PRODUCTION ISO BOOTED CI-ONLY TEST UNIT; refusing release!" >&2
+      exit 1
+    fi
+    # The CI guest performs exhaustive checks; the production ISO must be
+    # tested unmodified using externally visible tty1 autologin evidence.
+    # Long-running systemd units don't reliably emit audit start records.
+    if bash "$ROOT/scripts/assert-production-boot.sh" "$SERIAL_LOG"; then
+      # Keep a visible trace of the /dev/sr0 loop-device warning from #14
+      # rather than masking unrelated systemd failures to make CI green.
+      if grep -aq 'Failed to start Attach File.*Loopback Block Device' "$SERIAL_LOG"; then
+        echo "::warning::Systemd reported a loopback attachment failure; inspect the QEMU serial artifact (issue #14)."
+      fi
+      echo "Unmodified production Kova ISO booted with live user and login."
+      exit 0
+    fi
   fi
   if ! kill -0 "$QEMU_PID" 2>/dev/null; then
     echo "QEMU exited before the guest reported success." >&2
@@ -69,7 +107,7 @@ while (( SECONDS < DEADLINE )); do
   sleep 2
 done
 
-echo "Timed out waiting for the Kova guest smoke test." >&2
+echo "Timed out waiting for the Kova $MODE guest boot signal." >&2
 cat "$QEMU_LOG" >&2
 tail -n 120 "$SERIAL_LOG" >&2
 exit 1
