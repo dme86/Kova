@@ -33,6 +33,8 @@ jobs:
         run: bash tests/test-size-report.sh
       - name: Check offline wallpaper pool packaging and boot rotation
         run: bash tests/test-wallpaper-pool.sh
+      - name: Validate live DE/EN locale and documentation extraction policy
+        run: bash tests/test-live-content-policy.sh
       - name: Check live banner and installer ordering
         run: bash tests/test-installer-static.sh
       - name: Validate Kova font and terminal settings
