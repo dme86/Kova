@@ -403,16 +403,8 @@ fn install(args: &[String]) -> Result<(), String> {
         return Err("disk erase confirmation did not match; no changes made".into());
     }
     let password = ask_password()?;
-    // Capture identity at the last possible moment; backend independently rechecks.
-    let output = Command::new("lsblk").args(["-dn", "-o", "MAJ:MIN", "--"])
-        .arg(&plan.disk.path).output().map_err(|e| e.to_string())?;
-    if !output.status.success() {
-        return Err("cannot verify target disk identity".into());
-    }
-    let identity = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if identity.is_empty() || !identity.contains(':') {
-        return Err("invalid target disk identity".into());
-    }
+    // The backend reacquires the device's major:minor identity immediately
+    // before launch; the privileged script independently rechecks it again.
     run_install_backend(&plan, &password)?;
     Ok(())
 }
