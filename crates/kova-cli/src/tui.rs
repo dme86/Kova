@@ -219,6 +219,7 @@ fn choose<'a>(
 ) -> Result<Option<String>, String> {
     let mut filter = String::new();
     let mut index = items.iter().position(|i| i == selected).unwrap_or(0);
+    let mut warning = String::new();
     loop {
         let matches: Vec<usize> = items.iter().enumerate()
             .filter(|(_, item)| matched(item, &filter, label))
@@ -229,7 +230,8 @@ fn choose<'a>(
         let slots = height.saturating_sub(14).clamp(1, 16);
         let first = index.saturating_sub(slots / 2)
             .min(matches.len().saturating_sub(slots));
-        let mut lines = frame(step, label, plan, "Type to search. Arrows select. Enter confirms.");
+        let mut lines = frame(step, label, plan,
+            if warning.is_empty() { "Type to search. Arrows select. Enter confirms." } else { &warning });
         lines.push(format!(" Search: {}_    {}/{} results", filter,
             if matches.is_empty() { 0 } else { index + 1 }, matches.len()));
         lines.push(String::new());
@@ -253,7 +255,11 @@ fn choose<'a>(
             Key::PageDown => index = (index + slots).min(matches.len().saturating_sub(1)),
             Key::Home => index = 0,
             Key::End => index = matches.len().saturating_sub(1),
-            Key::Enter => if let Some(&pick) = matches.get(index) { return Ok(Some(items[pick].clone())); },
+            Key::Enter => if let Some(&pick) = matches.get(index) {
+                if descriptions.get(pick).is_some_and(|d| d.contains("[FORBIDDEN]")) {
+                    warning = "That disk is not safe for installation. Choose an available disk.".into();
+                } else { return Ok(Some(items[pick].clone())); }
+            },
             Key::Clear => { filter.clear(); index = 0; },
             Key::Backspace => { filter.pop(); index = 0; },
             Key::Char(c) if !c.is_control() => { filter.push(c); index = 0; },
@@ -355,7 +361,10 @@ pub fn wizard(
             0 => {
                 let items: Vec<_> = disks.iter().map(|d| d.path.clone()).collect();
                 let descriptions: Vec<_> = disks.iter().map(|d| format!(
-                    "{} GiB  {}  [{}] {}", d.size_gib(), d.model, d.fs_type, d.status()
+                    "{} GiB  {}  [FS: {}] {} {}", d.size_gib(), d.model,
+                    if d.fs_type.is_empty() { "unknown" } else { &d.fs_type },
+                    if d.eligible() { "[AVAILABLE]" } else { "[FORBIDDEN]" },
+                    d.status()
                 )).collect();
                 let selected = choose(&mut tty, 1, "Disk", &plan, &items, &plan.disk.path, &descriptions)?;
                 if let Some(path) = selected {
