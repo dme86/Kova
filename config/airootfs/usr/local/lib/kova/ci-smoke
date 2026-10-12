@@ -62,6 +62,15 @@ test -x /usr/local/lib/kova/update-mirrors
 systemctl is-enabled --quiet kova-mirrors.timer
 log "KOVA_CI_STEP mirrors passed"
 
+stage="Kova Fastfetch branding"
+command -v fastfetch >/dev/null
+pacman -Q fastfetch >/dev/null
+test -r /usr/share/kova/logo-fastfetch.txt
+test -r /usr/share/kova/logo-fastfetch-mini.txt
+test -r /etc/xdg/fastfetch/config.jsonc
+fastfetch --show-errors --pipe | /usr/bin/grep -q 'Kova Linux'
+log "KOVA_CI_STEP fastfetch-branding passed"
+
 stage="Rust Kova installer preview"
 test -x /usr/local/bin/kova
 /usr/local/bin/kova install --dry-run --demo | /usr/bin/grep -q 'NO PARTITIONS OR FILES WERE MODIFIED'

@@ -105,7 +105,7 @@ pacstrap -K "$target" \
   base linux linux-firmware mkinitcpio btrfs-progs snapper \
   sudo fish git curl jq rate-mirrors neovim networkmanager \
   eza bat fd ripgrep bottom dust procs dysk sd uutils-coreutils \
-  zoxide fzf tmux starship wayland mesa libinput seatd \
+  zoxide fzf tmux starship fastfetch wayland mesa libinput seatd \
   greetd greetd-tuigreet swaybg mako libnotify pipewire pipewire-alsa pipewire-pulse wireplumber brightnessctl alacritty librewolf xdg-utils ttf-jetbrains-mono ttf-nerd-fonts-symbols-mono adwaita-icon-theme xorg-xwayland wl-clipboard \
   zram-generator dosfstools efibootmgr
 # Snapper create-config requires .snapshots to be unmounted.
@@ -127,8 +127,11 @@ printf '%s\n' "$hostname" > "$target/etc/hostname"
 grep -Eq "^#?$locale[[:space:]]+UTF-8" "$target/etc/locale.gen" || { echo "Unknown locale" >&2; exit 1; }
 sed -i -E "s/^#($locale[[:space:]]+UTF-8)/\1/" "$target/etc/locale.gen"
 arch-chroot "$target" locale-gen
-# Rebuild after the final keyboard/locale configuration to guarantee that
-# the installed initramfs uses the installed system's console keymap.
+# mkinitcpio embeds /etc/os-release as initrd-release; stage Kova identity
+# BEFORE rebuilding or the early initrd banner says "Arch Linux".
+install -Dm644 /etc/os-release "$target/etc/os-release"
+grep -Fqx 'PRETTY_NAME="Kova Linux"' "$target/etc/os-release"
+# Rebuild after final keyboard/locale and Kova identity configuration.
 arch-chroot "$target" mkinitcpio -P
 for file in /usr/local/bin/kova /usr/local/bin/anvil /usr/local/bin/anvilctl /usr/local/bin/kova-session /usr/local/bin/kova-osd; do
   install -Dm755 "$file" "$target$file"
@@ -146,8 +149,13 @@ done
 install -Dm644 /etc/greetd/config.toml "$target/etc/greetd/config.toml"
 # System-wide XDG browser defaults, overridable by each user's mimeapps.list.
 install -Dm644 /etc/xdg/mimeapps.list "$target/etc/xdg/mimeapps.list"
+for logo in /usr/share/kova/logo-fastfetch.txt /usr/share/kova/logo-fastfetch-mini.txt \
+            /usr/share/kova/logo-neofetch.txt /usr/share/kova/logo-ascii.txt; do
+  [[ -r "$logo" ]] || { echo "Missing Kova terminal logo: $logo" >&2; exit 1; }
+  install -Dm644 "$logo" "$target$logo"
+done
+install -Dm644 /etc/xdg/fastfetch/config.jsonc "$target/etc/xdg/fastfetch/config.jsonc"
 install -Dm644 /etc/fonts/conf.d/70-kova-monospace.conf "$target/etc/fonts/conf.d/70-kova-monospace.conf"
-install -Dm644 /etc/os-release "$target/etc/os-release"
 install -Dm644 /etc/issue "$target/etc/issue"
 install -Dm644 /usr/local/share/kova/anvil-version "$target/usr/local/share/kova/anvil-version"
 install -Dm644 /usr/share/wayland-sessions/anvil.desktop "$target/usr/share/wayland-sessions/anvil.desktop"
