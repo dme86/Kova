@@ -1,8 +1,15 @@
 [Unit]
-Description=Kova: synchronize the shared wallpaper repository
-Wants=network-online.target
-After=network-online.target
+Description=Kova: rotate a verified GitHub wallpaper cache
+After=network.target
+ConditionPathIsDirectory=/var/lib/kova/wallpapers/files
+
 [Service]
 Type=oneshot
-ExecStart=/usr/local/lib/kova/update-wallpapers
-TimeoutStartSec=300
+ExecStart=/usr/local/bin/kova wallpaper boot
+TimeoutStartSec=360
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/kova/wallpapers
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK

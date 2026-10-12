@@ -15,7 +15,7 @@ cat > "$root/var/lib/pacman/local/test-1/desc" <<'DESC'
 %NAME%
 test-package
 
-%ISIZE%
+%SIZE%
 1048576
 DESC
 bash scripts/report-iso-size.sh "$tmp/out" "$tmp/work" "$tmp/profile"

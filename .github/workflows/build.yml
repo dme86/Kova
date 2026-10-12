@@ -31,6 +31,10 @@ jobs:
         run: bash tests/test-mirrors.sh
       - name: Test offline ISO size report generator
         run: bash tests/test-size-report.sh
+      - name: Validate live DE/EN language and documentation exclusions
+        run: bash tests/test-live-content-policy.sh
+      - name: Test offline wallpaper pool and five-boot rotation
+        run: bash tests/test-wallpaper-pool.sh
       - name: Check live ISO package policy for Neovim
         run: bash tests/test-live-package-policy.sh
       - name: Ensure production ISO excludes CI smoke infrastructure

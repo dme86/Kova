@@ -14,6 +14,8 @@ cp -a /usr/share/archiso/configs/releng/. "$PROFILE/"
   exit 1
 }
 cp -a "$ROOT/config/airootfs/." "$PROFILE/airootfs/"
+# Build-only locale/man/doc packaging: installed Kova uses the normal Arch configuration.
+bash "$ROOT/scripts/configure-live-content.sh" "$PROFILE"
 # A release image must not contain internal CI scripts/units, even disabled.
 # Keep these in the repository for the separately built CI boot-test ISO.
 if [[ ${KOVA_CI_IMAGE:-0} != 1 ]]; then

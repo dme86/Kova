@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-# Called by Anvil's startup list (after the Wayland socket exists).
-wallpapers=/var/lib/kova/wallpapers/files
-[[ -n ${WAYLAND_DISPLAY:-} && -d $wallpapers ]] || exit 0
-picked=$(find "$wallpapers" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) | shuf -n1)
-[[ -n $picked ]] || exit 0
-# This background client requires Anvil's layer-shell feature.
+# Anvil starts this after the Wayland socket exists.
+# Always retain the three offline seed images; also include up to five
+# downloaded images without following temporary/staging directories.
+root=/var/lib/kova/wallpapers
+[[ -n ${WAYLAND_DISPLAY:-} && -d "$root/files" ]] || exit 0
+dirs=("$root/files")
+[[ -d "$root/cache" ]] && dirs+=("$root/cache")
+picked=$(find "${dirs[@]}" -maxdepth 1 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) | shuf -n1)
+[[ -n "$picked" ]] || exit 0
 exec swaybg --image "$picked" --mode fill

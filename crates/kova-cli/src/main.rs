@@ -1,5 +1,6 @@
 //! Kova's single user-facing Rust executable.
 use kova_installer::{choices, demo_plan, discover_disks, Disk, InstallPlan};
+mod wallpapers;
 use std::io::{self, IsTerminal, Write};
 use std::process::{Command, Stdio};
 
@@ -13,6 +14,9 @@ fn usage() {
          kova news                   Relevant Arch Linux announcements\n\
          kova news --summary         Fast cached login notification\n\
          kova news read N            Read and acknowledge announcement N\n\
+         kova wallpaper status        Show offline seeds, cached pool and boot count\n\
+         kova wallpaper sync          Download five random, verified wallpapers now\n\
+         kova wallpaper boot          Rotate pool on every fifth boot (systemd)\n\
          \n\
          WARNING: --apply irreversibly erases the ENTIRE target disk. Dual boot is not implemented."
     );
@@ -360,6 +364,7 @@ fn run() -> Result<(), String> {
         None | Some("--help") | Some("-h") => { usage(); Ok(()) }
         Some("install") => install(&args[1..]),
         Some("news") => kova_news::run(&args[1..]),
+        Some("wallpaper") => wallpapers::run(&args[1..]),
         Some(other) => Err(format!("unknown subcommand: {other}")),
     }
 }

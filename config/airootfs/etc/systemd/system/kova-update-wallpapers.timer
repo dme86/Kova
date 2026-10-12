@@ -1,9 +1,12 @@
 [Unit]
-Description=Kova: refresh wallpapers daily
+Description=Kova: consider rotating wallpaper cache on every boot
+
 [Timer]
-OnBootSec=10min
-OnCalendar=daily
-RandomizedDelaySec=30min
-Persistent=true
+# Run once per boot; the Rust helper refreshes the cache every fifth boot
+# (or immediately on first boot when the cache has not been populated).
+OnBootSec=2min
+AccuracySec=30s
+Persistent=false
+
 [Install]
 WantedBy=timers.target
