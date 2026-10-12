@@ -18,6 +18,7 @@ fn usage() {
          kova install --dry-run --demo  Preview a synthetic disk (CI)\n\
          kova install --apply         Show plan, then request ERASE confirmation (UEFI)\n\
          kova install --no-tui       Accessible line-based wizard instead of keyboard TUI\n\
+         kova install --tui-demo     Safe interactive TUI preview using a synthetic disk\n\
          kova news                   Relevant Arch Linux announcements\n\
          kova news --summary         Fast cached login notification\n\
          kova news read N            Read and acknowledge announcement N\n\
@@ -259,6 +260,7 @@ fn install(args: &[String]) -> Result<(), String> {
     let mut dry_run = false;
     let mut list_disks = false;
     let mut no_tui = false;
+    let mut tui_demo = false;
     let (mut disk, mut user, mut host, mut locale, mut keyboard, mut timezone) =
         (None, None, None, None, None, None);
     let mut iter = args.iter();
@@ -269,6 +271,7 @@ fn install(args: &[String]) -> Result<(), String> {
             "--dry-run" => { dry_run = true; continue; }
             "--list-disks" => { list_disks = true; continue; }
             "--no-tui" => { no_tui = true; continue; }
+            "--tui-demo" => { tui_demo = true; continue; }
             "--disk" => &mut disk,
             "--username" => &mut user,
             "--hostname" => &mut host,
@@ -279,11 +282,24 @@ fn install(args: &[String]) -> Result<(), String> {
         };
         *slot = Some(iter.next().ok_or_else(|| format!("{arg} needs a value"))?.clone());
     }
-    if apply && (dry_run || demo || list_disks) {
+    if apply && (dry_run || demo || tui_demo || list_disks) {
         return Err("cannot combine --apply with --dry-run, --demo or --list-disks".into());
     }
     if demo {
         println!("{}", demo_plan().preview()?);
+        return Ok(());
+    }
+    if tui_demo {
+        if !io::stdin().is_terminal() || !tui::supported() {
+            return Err("--tui-demo requires a supported interactive TTY".into());
+        }
+        let plan = demo_plan();
+        let locales = vec!["en_US.UTF-8".to_owned(), "de_DE.UTF-8".to_owned(), "fr_FR.UTF-8".to_owned()];
+        let keyboards = vec!["us".to_owned(), "de".to_owned()];
+        let timezones = vec!["UTC".to_owned(), "Europe/Berlin".to_owned()];
+        let selections = tui::wizard(&[plan.disk.clone()], plan, &locales, &keyboards, &timezones, false)?;
+        if let Some(preview) = selections { println!("{}", preview.preview()?); }
+        else { println!("TUI demo cancelled. No disk changes made."); }
         return Ok(());
     }
     let disks = discover_disks()?;
