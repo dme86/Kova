@@ -195,8 +195,23 @@ fn has_pool(root: &Path) -> bool {
     }).count() == POOL_SIZE
 }
 
+fn cleanup_stale_stages(root: &Path) -> Result<(), String> {
+    // An interrupted poweroff can leave incomplete hidden download folders.
+    // The caller holds the exclusive lock, so no active sync owns them.
+    for item in fs::read_dir(root).map_err(|e| e.to_string())? {
+        let item = item.map_err(|e| e.to_string())?;
+        if item.file_name().to_string_lossy().starts_with(".download-")
+            && item.file_type().map_err(|e| e.to_string())?.is_dir()
+        {
+            fs::remove_dir_all(item.path()).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
 fn refresh(root: &Path) -> Result<(), String> {
     recover_swap(root)?;
+    cleanup_stale_stages(root)?;
     // Prefer fresh images: never select one of the three ISO fallbacks,
     // so a populated cache offers eight distinct motifs rather than five.
     let images = catalog()?.into_iter()
@@ -309,6 +324,32 @@ mod tests {
         assert_eq!(POOL_SIZE, 5);
         assert_eq!(BOOT_INTERVAL, 5);
     }
+    #[test]
+    fn failed_previous_download_is_cleaned_up() {
+        let dir = std::env::temp_dir().join(format!("kova-stage-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join(".download-123")).unwrap();
+        fs::write(dir.join(".download-123/incomplete.png"), b"partial").unwrap();
+        cleanup_stale_stages(&dir).unwrap();
+        assert!(!dir.join(".download-123").exists());
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn boot_counter_waits_five_starts_without_network() {
+        let dir = std::env::temp_dir().join(format!("kova-boots-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("cache")).unwrap();
+        for n in 0..5 {
+            fs::write(dir.join("cache").join(format!("{n}.png")), b"cached").unwrap();
+        }
+        for n in 1..5 {
+            on_boot(&dir).unwrap();
+            assert_eq!(read_count(&dir), n);
+        }
+        fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn stale_backup_is_recovered_without_network() {
         let dir = std::env::temp_dir().join(format!("kova-pool-test-{}", std::process::id()));
