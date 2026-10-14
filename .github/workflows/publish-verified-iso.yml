@@ -1,0 +1,115 @@
+name: Publish verified Kova ISO
+
+on:
+  # The first addition of this file promotes the already-running post-merge build
+  # without triggering another expensive Archiso build.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-verified-iso.yml'
+  # For later releases, select a completed successful build and its exact SHA.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release tag (for example v0.1.2)'
+        required: true
+        type: string
+      run_id:
+        description: 'Successful Build Kova ISO workflow run ID'
+        required: true
+        type: string
+      commit_sha:
+        description: 'Exact tested commit SHA'
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    name: Reuse tested ISO without rebuilding
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_VERSION: ${{ inputs.version || 'v0.1.1' }}
+      BUILD_RUN_ID: ${{ inputs.run_id || '38590849445' }}
+      SOURCE_SHA: ${{ inputs.commit_sha || '87a4f2e9a2f55e3c8cf609df40525a4375fa7289' }}
+    steps:
+      - name: Wait for completed, successful post-merge build
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "::error::Invalid release version $RELEASE_VERSION"; exit 1;
+          }
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]] || exit 1
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          if gh release view "$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "::error::Release $RELEASE_VERSION already exists; refusing to overwrite assets."
+            exit 1
+          fi
+          for attempt in $(seq 1 180); do
+            payload=$(gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN_ID")
+            sha=$(jq -r '.head_sha' <<< "$payload")
+            name=$(jq -r '.name' <<< "$payload")
+            event=$(jq -r '.event' <<< "$payload")
+            state=$(jq -r '.status' <<< "$payload")
+            result=$(jq -r '.conclusion // empty' <<< "$payload")
+            if [[ "$sha" != "$SOURCE_SHA" || "$name" != 'Build Kova ISO' || "$event" != 'push' ]]; then
+              echo "::error::The selected run is not the expected Build Kova ISO push on $SOURCE_SHA."
+              exit 1
+            fi
+            if [[ "$state" == completed ]]; then
+              if [[ "$result" == success ]]; then
+                echo "Verified successful ISO build: run $BUILD_RUN_ID for $SOURCE_SHA"
+                exit 0
+              fi
+              echo "::error::Build run finished as $result; no release."
+              exit 1
+            fi
+            echo "Waiting for ISO build $BUILD_RUN_ID: $state (attempt $attempt/180)"
+            sleep 30
+          done
+          echo "::error::Timed out waiting for verified ISO build."
+          exit 1
+
+      - name: Download exact production ISO artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p out
+          gh run download "$BUILD_RUN_ID" --name kova-iso --dir out
+
+      - name: Verify checksum, artifact count and GitHub release size limit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          (cd out && sha256sum -c SHA256SUMS)
+          shopt -s nullglob
+          isos=(out/*.iso)
+          [[ "${#isos[@]}" == 1 ]] || {
+            echo "::error::Expected one production ISO, got ${#isos[@]}"; exit 1;
+          }
+          [[ -s "${isos[0]}" && -s out/SHA256SUMS ]] || exit 1
+          [[ $(stat -c '%s' "${isos[0]}") -lt 2147483648 ]] || {
+            echo "::error::ISO exceeds GitHub's 2 GiB per-asset limit"; exit 1;
+          }
+          echo "Ready to release: ${isos[0]}"
+
+      - name: Publish exact CI-tested ISO as GitHub Release
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if gh release view "$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "::error::Release appeared during verification; refusing to overwrite."
+            exit 1
+          fi
+          isos=(out/*.iso)
+          gh release create "$RELEASE_VERSION" "${isos[0]}" out/SHA256SUMS \
+            --target "$SOURCE_SHA" \
+            --title "Kova Linux $RELEASE_VERSION" \
+            --notes "Verified Kova live ISO from commit $SOURCE_SHA (GitHub Actions run $BUILD_RUN_ID). Fixes disruptive audit notices on the live TTY without disabling auditing. Exact production ISO passed BIOS and UEFI QEMU boot smoke tests. macOS/Nix QEMU UEFI boot still requires local OVMF CODE/VARS verification (issue #29)."
