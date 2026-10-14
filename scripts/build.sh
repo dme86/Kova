@@ -28,6 +28,9 @@ grep -Fq "Super + Enter" "$PROFILE/airootfs/etc/motd"
 # Enable live user provisioning and serial smoke testing in the live image.
 mkdir -p "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants"
 ln -s ../kova-live-user.service "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants/kova-live-user.service"
+# Production diagnostics: emit one serial line only after logind proves that
+# the real live user logged into tty1 (rather than relying on kernel audit spam).
+ln -s ../kova-live-ready.service "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants/kova-live-ready.service"
 if [[ ${KOVA_CI_IMAGE:-0} == 1 ]]; then
   ln -s ../kova-ci-smoke.service "$PROFILE/airootfs/etc/systemd/system/multi-user.target.wants/kova-ci-smoke.service"
 else
@@ -113,25 +116,32 @@ mv "$PROFILE/packages.x86_64.tmp" "$PROFILE/packages.x86_64"
 sed -i -E 's/^iso_name=.*/iso_name="kova"/; s/^iso_publisher=.*/iso_publisher="Kova Linux"/; s/^iso_application=.*/iso_application="Kova Linux Live Environment"/' "$PROFILE/profiledef.sh"
 # Apply Kova boot menu branding to the copied upstream releng profile.
 bash "$ROOT/scripts/brand-profile.sh" "$PROFILE"
-# Expose kernel, initramfs and systemd output on QEMU's first serial port.
-# Keep tty0 as the primary console so the ISO also remains usable on real PCs.
-# Without this, syslinux appears on the serial log but the Linux boot is silent,
-# making it impossible to tell a boot failure from an inactive smoke-test unit.
+# Preserve serial diagnostics for QEMU, but keep the actual production TTY clean.
+# Kernel audit fallback records are emitted at KERN_NOTICE (priority 5). A
+# console threshold of 5 keeps warnings/errors (priority <=4) visible without
+# disabling auditing or hiding the messages from dmesg/journalctl.
+# The instrumented CI-only ISO deliberately keeps verbose serial output.
+if [[ ${KOVA_CI_IMAGE:-0} == 1 ]]; then
+  BOOT_ARGS='console=ttyS0,115200n8 console=tty0 loglevel=6 systemd.log_level=info systemd.log_target=kmsg'
+else
+  BOOT_ARGS='console=ttyS0,115200n8 console=tty0 quiet loglevel=5 systemd.log_level=warning'
+fi
 SYSLINUX_CFG="$PROFILE/syslinux/archiso_sys-linux.cfg"
 [[ -f "$SYSLINUX_CFG" ]] || { echo "Missing Archiso BIOS boot entry: $SYSLINUX_CFG" >&2; exit 1; }
-sed -i -E '/^APPEND /s|$| console=ttyS0,115200n8 console=tty0 loglevel=6 systemd.log_level=info systemd.log_target=kmsg|' "$SYSLINUX_CFG"
+sed -i -E '/^APPEND /s|$| '"$BOOT_ARGS"'|' "$SYSLINUX_CFG"
 grep -q 'console=ttyS0,115200n8' "$SYSLINUX_CFG"
 # Test the UEFI/OVMF path as well; the live installer requires UEFI.
 # Mirror BIOS serial diagnostics while keeping tty0 as the visible console.
 UEFI_ENTRY="$PROFILE/efiboot/loader/entries/01-archiso-linux.conf"
 [[ -f "$UEFI_ENTRY" ]] || { echo "Missing Archiso UEFI entry: $UEFI_ENTRY" >&2; exit 1; }
-sed -i -E '/^options /s|$| console=ttyS0,115200n8 console=tty0 loglevel=6 systemd.log_level=info systemd.log_target=kmsg|' "$UEFI_ENTRY"
+sed -i -E '/^options /s|$| '"$BOOT_ARGS"'|' "$UEFI_ENTRY"
 grep -q 'console=ttyS0,115200n8' "$UEFI_ENTRY"
 # Archiso copies custom airootfs files without their original file modes.
 # Explicitly restore executable permissions for our live-system scripts.
 # Missing these entries causes kova-live-user.service to fail with 203/EXEC.
 cat >> "$PROFILE/profiledef.sh" <<'KOVA_PERMISSIONS'
 file_permissions["/usr/local/lib/kova/setup-live-user"]="0:0:755"
+file_permissions["/usr/local/lib/kova/report-live-session"]="0:0:755"
 file_permissions["/usr/local/lib/kova/update-mirrors"]="0:0:755"
 file_permissions["/usr/local/bin/kova"]="0:0:755"
 file_permissions["/usr/local/bin/anvil"]="0:0:755"
