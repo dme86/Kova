@@ -3,6 +3,9 @@ name: Build Kova ISO
 on:
   push:
     branches: [main]
+    # Publishing an already tested ISO must not rebuild the multi-GiB image.
+    paths-ignore:
+      - '.github/workflows/publish-verified-iso.yml'
   workflow_dispatch:
   pull_request:
     branches: [main]
