@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# This is a *production* diagnostic, not the CI-only smoke-test service.
+# On VMs with ttyS0, report when logind sees the real live user's tty1 session.
+# Keeping the notice off tty0 lets the TTY/installer stay usable.
+serial=${KOVA_LIVE_SERIAL:-/dev/ttyS0}
+ctl=${KOVA_LOGINCTL:-/usr/bin/loginctl}
+attempts=${KOVA_LIVE_MAX_ATTEMPTS:-120}
+[[ -c "$serial" || ${KOVA_LIVE_TEST_FILE:-0} == 1 ]] || exit 0
+for (( attempt=0; attempt<attempts; attempt++ )); do
+  while read -r sid _; do
+    [[ -n "$sid" ]] || continue
+    props=$("$ctl" show-session "$sid" --no-pager -p Name -p TTY -p State 2>/dev/null) || continue
+    if grep -Fxq 'Name=kova' <<< "$props" &&
+       grep -Fxq 'TTY=tty1' <<< "$props" &&
+       grep -Fxq 'State=active' <<< "$props"; then
+      printf 'KOVA_LIVE_TTY1_READY user=kova tty=tty1\n' > "$serial"
+      exit 0
+    fi
+  done < <("$ctl" list-sessions --no-legend --no-pager 2>/dev/null)
+  sleep 1
+done
+echo 'Kova live tty1 login not observed within diagnostic timeout' >&2
+exit 1

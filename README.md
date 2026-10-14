@@ -214,6 +214,16 @@ Tide and the Neovim configuration are fetched during the build. The Tide install
 
 ## Boot testing
 
+The production live ISO uses `loglevel=5` to keep kernel audit NOTICE messages
+off the login/installer TTY while preserving warnings and kernel audit records
+for `dmesg` / `journalctl -k`. The instrumented CI ISO remains verbose.
+Both BIOS and UEFI production boots must prove a real active `kova` logind
+session on tty1 through a diagnostic serial marker. We do not disable auditing.
+
+On macOS (including Nix-installed QEMU), see [QEMU UEFI boot instructions](docs/qemu-macos.md)
+for an isolated, fresh OVMF variable store and non-destructive ISO boot.
+
+
 Archiso includes `run_archiso` for testing images with QEMU:
 
 ```sh
@@ -227,7 +237,7 @@ For automated serial-console testing with QEMU installed:
 bash scripts/test-iso.sh
 ```
 
-The smoke-test service starts only in a virtual machine with `/dev/ttyS0`. It verifies the live-user systemd service and the tty1 autologin configuration, and runs commands as the `kova` user via `runuser`. This does **not** simulate an interactive console login or an SSH connection. It reports `KOVA_CI_PASS` or `KOVA_CI_FAIL` over the serial port. CI currently covers BIOS boot; UEFI, the graphical environment and a persistent installation require separate tests.
+The smoke-test service starts only in a virtual machine with `/dev/ttyS0`. It verifies the live-user systemd service and the tty1 autologin configuration, and runs commands as the `kova` user via `runuser`. This does **not** simulate an interactive console login or an SSH connection. It reports `KOVA_CI_PASS` or `KOVA_CI_FAIL` over the serial port. CI boots the production ISO under both BIOS and UEFI; the graphical environment and a persistent installation still require separate tests.
 
 ## Installer roadmap
 

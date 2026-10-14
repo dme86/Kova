@@ -1,0 +1,13 @@
+[Unit]
+Description=Report successful Kova live tty1 session to serial diagnostics
+After=kova-live-user.service systemd-logind.service
+Wants=systemd-logind.service
+ConditionPathExists=/dev/ttyS0
+
+[Service]
+Type=simple
+ExecStart=/usr/local/lib/kova/report-live-session
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

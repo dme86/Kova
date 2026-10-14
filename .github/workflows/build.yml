@@ -44,6 +44,10 @@ jobs:
         run: bash tests/test-iso-flavors.sh
       - name: Test production boot serial detection against real QEMU logs
         run: bash tests/test-production-boot.sh
+      - name: Test quiet live boot policy and logind tty1 proof
+        run: bash tests/test-quiet-live.sh
+      - name: Test safe macOS QEMU launcher
+        run: bash tests/test-qemu-macos.sh
       - name: Check live banner and installer ordering
         run: bash tests/test-installer-static.sh
       - name: Validate Kova font and terminal settings
