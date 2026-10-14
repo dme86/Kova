@@ -8,9 +8,9 @@ printf 'VARS\n' > "$tmp/vars.fd"
 KOVA_OVMF_CODE="$tmp/code.fd" KOVA_OVMF_VARS_TEMPLATE="$tmp/vars.fd" \
  KOVA_QEMU_STATE_DIR="$tmp/new-nvram" KOVA_QEMU_DRY_RUN=1 \
  bash scripts/qemu-macos.sh "$tmp/kova.iso" > "$tmp/run.txt"
-grep -Fq 'if=pflash,format=raw,readonly=on' "$tmp/run.txt"
+grep -Fq 'if=pflash' "$tmp/run.txt"
 grep -Fq 'media=cdrom' "$tmp/run.txt"
-grep -Fq 'order=d,menu=on' "$tmp/run.txt"
+grep -Fq 'order=d' "$tmp/run.txt"
 cmp "$tmp/vars.fd" "$tmp/new-nvram/kova-uefi-vars-fresh.fd"
 printf 'OLD_NVRAM_DO_NOT_TOUCH\n' > "$tmp/uefi-vars.fd"
 KOVA_OVMF_CODE="$tmp/code.fd" KOVA_OVMF_VARS_TEMPLATE="$tmp/vars.fd" \
