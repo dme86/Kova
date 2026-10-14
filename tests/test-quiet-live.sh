@@ -5,7 +5,7 @@ from pathlib import Path
 build = Path("scripts/build.sh").read_text()
 assert "BOOT_ARGS='console=ttyS0,115200n8 console=tty0 quiet loglevel=5 systemd.log_level=warning'" in build
 assert "BOOT_ARGS='console=ttyS0,115200n8 console=tty0 loglevel=6 systemd.log_level=info systemd.log_target=kmsg'" in build
-assert build.count("'"$BOOT_ARGS"'") == 2, "Both BIOS and UEFI must use selected policy"
+assert build.count('"$BOOT_ARGS"') == 2, "Both BIOS and UEFI must use selected policy"
 assert "audit=0" not in build, "Do not disable kernel auditing"
 assert "kova-live-ready.service" in build
 assert 'file_permissions["/usr/local/lib/kova/report-live-session"]="0:0:755"' in build
