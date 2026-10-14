@@ -3,7 +3,6 @@ name: Build Kova ISO
 on:
   push:
     branches: [main]
-    tags: ['v*']
   workflow_dispatch:
   pull_request:
     branches: [main]
@@ -35,6 +34,10 @@ jobs:
         run: bash tests/test-live-content-policy.sh
       - name: Test offline wallpaper pool and five-boot rotation
         run: bash tests/test-wallpaper-pool.sh
+      - name: Validate Kova terminal logo in Live and installed profiles
+        run: bash tests/test-fetch-branding.sh
+      - name: Check initrd identity, renderer, and release wiring
+        run: bash tests/test-v0.1.0-wiring.sh
       - name: Check live ISO package policy for Neovim
         run: bash tests/test-live-package-policy.sh
       - name: Ensure production ISO excludes CI smoke infrastructure
@@ -238,7 +241,7 @@ jobs:
 
   release:
     name: Publish verified release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: boot
     runs-on: ubuntu-24.04
     permissions:
@@ -250,9 +253,19 @@ jobs:
           path: out/
       - name: Verify release assets
         run: (cd out && sha256sum -c SHA256SUMS)
-      - name: Publish tagged release
+      - name: Publish Kova v0.1.0 from the ISO already boot-tested
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "$GITHUB_REF_NAME" out/*.iso out/SHA256SUMS \
-            --generate-notes --title "Kova Linux $GITHUB_REF_NAME"
+          # Never replace an already-published release; no extra tagged build.
+          if gh release view v0.1.0 >/dev/null 2>&1; then
+            echo "Kova v0.1.0 already published."
+            exit 0
+          fi
+          iso=$(find out -maxdepth 1 -name '*.iso' -type f -print -quit)
+          test -n "$iso"
+          test "$(stat -c '%s' "$iso")" -lt 2147483648
+          gh release create v0.1.0 "$iso" out/SHA256SUMS \
+            --target "$GITHUB_SHA" --title "Kova Linux v0.1.0" \
+            --notes "First experimental Kova Linux release: Anvil, LibreWolf, TTY installer and Kova terminal branding. Tested as BIOS and UEFI live ISO. Full-disk installation only; back up your data before use."

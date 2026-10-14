@@ -1,0 +1,19 @@
+{
+  "logo": {
+    "type": "file",
+    "source": "/usr/share/kova/logo-fastfetch.txt",
+    "padding": {
+      "right": 3
+    },
+    "color": {
+      "1": "#DEE5EC",
+      "2": "#FA7925"
+    }
+  },
+  "display": {
+    "color": {
+      "keys": "#FA7925",
+      "title": "#DEE5EC"
+    }
+  }
+}

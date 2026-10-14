@@ -99,6 +99,7 @@ starship
 fzf
 lazygit
 tmux
+fastfetch
 npm
 tree-sitter-cli
 unzip

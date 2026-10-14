@@ -62,6 +62,32 @@ test -x /usr/local/lib/kova/update-mirrors
 systemctl is-enabled --quiet kova-mirrors.timer
 log "KOVA_CI_STEP mirrors passed"
 
+stage="Kova Fastfetch branding"
+command -v fastfetch >/dev/null
+pacman -Q fastfetch >/dev/null
+test -r /usr/share/kova/logo-fastfetch.txt
+test -r /usr/share/kova/logo-fastfetch-mini.txt
+test -r /etc/xdg/fastfetch/config.jsonc
+# Never pipe into grep -q under 'set -o pipefail': grep can close the pipe
+# as soon as it sees "Kova Linux", causing Fastfetch to exit on SIGPIPE.
+# --pipe false is important: Fastfetch hides logos when stdout isn't a TTY.
+branding_output=$(mktemp)
+if ! TERM=xterm-256color fastfetch --show-errors --pipe false --structure os >"$branding_output" 2>&1; then
+  log "KOVA_CI_DIAG Fastfetch exited unsuccessfully:"
+  while IFS= read -r line; do log "KOVA_CI_DIAG ${line:0:200}"; done < "$branding_output"
+  rm -f "$branding_output"
+  false
+fi
+if ! /usr/bin/grep -Fq 'Kova Linux' "$branding_output" ||
+   ! /usr/bin/grep -Fq '▒' "$branding_output"; then
+  log "KOVA_CI_DIAG Kova identity or Unicode logo missing from Fastfetch output:"
+  while IFS= read -r line; do log "KOVA_CI_DIAG ${line:0:200}"; done < "$branding_output"
+  rm -f "$branding_output"
+  false
+fi
+rm -f "$branding_output"
+log "KOVA_CI_STEP fastfetch-branding passed"
+
 stage="Rust Kova installer preview"
 test -x /usr/local/bin/kova
 /usr/local/bin/kova install --dry-run --demo | /usr/bin/grep -q 'NO PARTITIONS OR FILES WERE MODIFIED'

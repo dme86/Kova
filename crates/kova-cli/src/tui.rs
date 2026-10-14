@@ -1,6 +1,6 @@
 //! Dependency-free, keyboard-first installer TUI for text consoles / SSH.
 //! The low-level installer and its exact ERASE confirmation remain unchanged.
-use kova_installer::{choices, Disk, InstallPlan};
+use kova_installer::{Disk, InstallPlan};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::process::Command;
@@ -15,6 +15,8 @@ pub fn supported() -> bool {
 struct Terminal {
     tty: File,
     original: String,
+    previous_lines: Vec<String>,
+    previous_size: (usize, usize),
 }
 
 impl Terminal {
@@ -35,8 +37,9 @@ impl Terminal {
         // Non-canonical, non-echo, non-signal mode. ^C becomes a regular byte,
         // handled below, so restoring terminal settings is deterministic.
         Self::command(&["-echo", "-icanon", "-isig", "min", "0", "time", "1"])?;
-        let mut result = Self { tty, original };
-        result.tty.write_all(b"\x1b[?1049h\x1b[?25l")
+        let mut result = Self { tty, original, previous_lines: Vec::new(), previous_size: (0, 0) };
+        // Clear the alternate screen once on startup; never on each keystroke.
+        result.tty.write_all(b"\x1b[?1049h\x1b[?25l\x1b[2J\x1b[H")
             .map_err(|e| e.to_string())?;
         Ok(result)
     }
@@ -52,20 +55,35 @@ impl Terminal {
 
     fn render(&mut self, lines: &[String]) -> Result<(), String> {
         let (rows, cols) = self.size();
-        let mut buffer = String::from("\x1b[H\x1b[2J");
+        let mut frame = Vec::new();
         if rows < 12 || cols < 35 {
-            buffer.push_str("Kova installer: enlarge terminal (>=35x12)\r\n");
-            buffer.push_str("Ctrl+C cancels safely. No disk changes.\r\n");
+            frame.push("Kova installer: enlarge terminal (>=35x12)".to_owned());
+            frame.push("Ctrl+C cancels safely. No disk changes.".to_owned());
         } else {
             for line in lines.iter().take(rows) {
                 let plain: String = line.chars().filter(|c| !c.is_control())
                     .take(cols.saturating_sub(1)).collect();
-                buffer.push_str(&plain);
-                buffer.push_str("\r\n");
+                frame.push(plain);
             }
         }
-        self.tty.write_all(buffer.as_bytes()).map_err(|e| e.to_string())?;
-        self.tty.flush().map_err(|e| e.to_string())
+        if self.previous_size != (rows, cols) {
+            self.previous_lines.clear();
+            self.previous_size = (rows, cols);
+        }
+        let mut output = String::new();
+        for row in 0..frame.len().max(self.previous_lines.len()) {
+            let next = frame.get(row).map(String::as_str).unwrap_or("");
+            let prev = self.previous_lines.get(row).map(String::as_str).unwrap_or("");
+            if next != prev {
+                output.push_str(&format!("\x1b[{};1H\x1b[2K{}", row + 1, next));
+            }
+        }
+        if !output.is_empty() {
+            self.tty.write_all(output.as_bytes()).map_err(|e| e.to_string())?;
+            self.tty.flush().map_err(|e| e.to_string())?;
+        }
+        self.previous_lines = frame;
+        Ok(())
     }
 
     fn byte(&mut self) -> Result<u8, String> {
