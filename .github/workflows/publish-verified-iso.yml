@@ -76,6 +76,8 @@ jobs:
             if [[ "$state" == completed ]]; then
               if [[ "$result" == success ]]; then
                 echo "Verified successful ISO build: run $BUILD_RUN_ID for $SOURCE_SHA"
+                # Propagate the auto-discovered run ID to the artifact-download and publish steps.
+                echo "BUILD_RUN_ID=$BUILD_RUN_ID" >> "$GITHUB_ENV"
                 exit 0
               fi
               echo "::error::Build run finished as $result; no release."
