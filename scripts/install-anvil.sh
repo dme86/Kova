@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 root=${1:?Usage: install-anvil.sh AIROOTFS}
-version=0.3.3
+version=0.6.4
 name="anvil-$version-x86_64-unknown-linux-gnu"
 url="https://github.com/dme86/anvil/releases/download/v$version/$name.tar.gz"
-sha256=4c4e5d02c1bfa2d67936d0e5837b5a390198317a1858762b32882844db196d73
+sha256=36e47f3393471db7ecb80c02d76e943b239124f838c4e05a6ba08ba484f0d802
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 curl -fLsS --retry 3 "$url" -o "$work/$name.tar.gz"
@@ -17,7 +17,8 @@ mkdir -p "$root/etc/skel/.config/anvil"
 sed 's@^startup = \[\]@startup = ["mako", "/usr/local/lib/kova/set-wallpaper"]@' \
   "$work/$name/config.toml" > "$root/etc/skel/.config/anvil/config.toml"
 # Kova uses a Rust terminal and native Anvil XF86 media-key actions.
-# The pinned Anvil v0.3.3 understands the [media] section.
+# Pinned Anvil v0.6.4 ships [media], [bar.network] and the native overview.
+# Its release archive is built with all features; runtime XWayland stays opt-in.
 config="$root/etc/skel/.config/anvil/config.toml"
 sed -i \
   -e 's@^terminal = "foot -o resize-by-cells=no"$@terminal = "alacritty"@' \
@@ -31,6 +32,8 @@ sed -i \
 grep -Fqx 'terminal = "alacritty"' "$config"
 grep -Fqx 'volume_up = "kova-osd volume up"' "$config"
 grep -Fqx 'brightness_down = "kova-osd brightness down"' "$config"
+grep -Fqx 'overview = "Tab"' "$config"
+grep -Fqx 'xwayland = false' "$config"
 grep -Fqx '[bar.network]' "$config"
 grep -Fqx 'enabled = true' "$config"
 grep -Fqx 'click_command = "alacritty -e nmtui-connect"' "$config"
