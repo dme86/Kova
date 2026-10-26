@@ -1,8 +1,8 @@
 name: Publish verified Kova ISO
 
 on:
-  # The first addition of this file promotes the already-running post-merge build
-  # without triggering another expensive Archiso build.
+  # Publish only on an explicit edit to this workflow in a main commit.
+  # Find that commit's tested ISO build instead of triggering a second Archiso build.
   push:
     branches: [main]
     paths:
@@ -35,9 +35,9 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      RELEASE_VERSION: ${{ inputs.version || 'v0.1.1' }}
-      BUILD_RUN_ID: ${{ inputs.run_id || '38590849445' }}
-      SOURCE_SHA: ${{ inputs.commit_sha || '87a4f2e9a2f55e3c8cf609df40525a4375fa7289' }}
+      RELEASE_VERSION: ${{ inputs.version || 'v0.1.2' }}
+      BUILD_RUN_ID: ${{ inputs.run_id || '' }}
+      SOURCE_SHA: ${{ inputs.commit_sha || github.sha }}
     steps:
       - name: Wait for completed, successful post-merge build
         shell: bash
@@ -46,20 +46,30 @@ jobs:
           [[ "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
             echo "::error::Invalid release version $RELEASE_VERSION"; exit 1;
           }
-          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]] || exit 1
+          [[ -z "$BUILD_RUN_ID" || "$BUILD_RUN_ID" =~ ^[0-9]+$ ]] || exit 1
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
           if gh release view "$RELEASE_VERSION" >/dev/null 2>&1; then
             echo "::error::Release $RELEASE_VERSION already exists; refusing to overwrite assets."
             exit 1
           fi
           for attempt in $(seq 1 180); do
+            if [[ -z "$BUILD_RUN_ID" ]]; then
+              BUILD_RUN_ID=$(gh run list --workflow build.yml --commit "$SOURCE_SHA" --event push \
+                --limit 10 --json databaseId --jq '.[0].databaseId // empty')
+              if [[ -z "$BUILD_RUN_ID" ]]; then
+                echo "Waiting for matching Build Kova ISO workflow ($SOURCE_SHA)"
+                sleep 30
+                continue
+              fi
+            fi
             payload=$(gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN_ID")
             sha=$(jq -r '.head_sha' <<< "$payload")
             name=$(jq -r '.name' <<< "$payload")
             event=$(jq -r '.event' <<< "$payload")
+            branch=$(jq -r '.head_branch' <<< "$payload")
             state=$(jq -r '.status' <<< "$payload")
             result=$(jq -r '.conclusion // empty' <<< "$payload")
-            if [[ "$sha" != "$SOURCE_SHA" || "$name" != 'Build Kova ISO' || "$event" != 'push' ]]; then
+            if [[ "$sha" != "$SOURCE_SHA" || "$name" != 'Build Kova ISO' || "$event" != 'push' || "$branch" != 'main' ]]; then
               echo "::error::The selected run is not the expected Build Kova ISO push on $SOURCE_SHA."
               exit 1
             fi
@@ -112,4 +122,4 @@ jobs:
           gh release create "$RELEASE_VERSION" "${isos[0]}" out/SHA256SUMS \
             --target "$SOURCE_SHA" \
             --title "Kova Linux $RELEASE_VERSION" \
-            --notes "Verified Kova live ISO from commit $SOURCE_SHA (GitHub Actions run $BUILD_RUN_ID). Fixes disruptive audit notices on the live TTY without disabling auditing. Exact production ISO passed BIOS and UEFI QEMU boot smoke tests. macOS/Nix QEMU UEFI boot still requires local OVMF CODE/VARS verification (issue #29)."
+            --notes "Kova Linux $RELEASE_VERSION ships pinned Anvil v0.6.4 (including the native window overview, multi-monitor improvements and XWayland reliability fixes). The Anvil release archive is SHA256-verified during ISO assembly. This exact production ISO is built from commit $SOURCE_SHA and passed CI checks plus BIOS/UEFI QEMU live boot smoke tests in run $BUILD_RUN_ID. Installed-system boot and physical DRM/KMS hardware still need separate validation."
