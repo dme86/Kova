@@ -27,6 +27,8 @@ jobs:
           done
       - name: Test low-battery notification thresholds (offline)
         run: bash tests/test-battery.sh
+      - name: Verify pinned Anvil release and installer integration
+        run: bash tests/test-anvil-pin.sh
       - name: Test Wayland audio and brightness OSD (offline)
         run: bash tests/test-osd.sh
       - name: Test mirror updater without network
