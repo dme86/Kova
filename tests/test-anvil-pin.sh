@@ -23,8 +23,7 @@ for value in (
 ):
     assert value in script, f"Missing Anvil integration safeguard: {value}"
 installer = Path("scripts/install-system.sh").read_text()
-assert '"/usr/local/bin/anvil"' in installer
-assert '"/usr/local/bin/anvilctl"' in installer
-assert '"/usr/local/share/kova/anvil-version"' in installer
+assert 'for file in /usr/local/bin/kova /usr/local/bin/anvil /usr/local/bin/anvilctl' in installer
+assert 'install -Dm644 /usr/local/share/kova/anvil-version "$target/usr/local/share/kova/anvil-version"' in installer
 print("Pinned Anvil v0.6.4, archive checksum and live/installed integration: OK")
 PY
